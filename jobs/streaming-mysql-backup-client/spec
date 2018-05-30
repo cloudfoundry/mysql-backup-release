@@ -1,0 +1,46 @@
+---
+name: streaming-mysql-backup-client
+
+templates:
+    streaming-mysql-backup-client_ctl.sh.erb: bin/client
+    cleanup-directories.erb: bin/cleanup-directories
+    streaming-mysql-backup-client.yml.erb: config/streaming-mysql-backup-client.yml
+    pre-start.erb: bin/pre-start
+    ca-certificate.pem.erb: certificates/ca-certificate.pem
+
+packages:
+    - xtrabackup
+    - streaming-mysql-backup-client
+
+consumes:
+- name: mysql
+  type: mysql
+  optional: true
+
+- name: mysql-backup-tool
+  type: mysql-backup-tool
+
+properties:
+    cf_mysql.mysql.cluster_ips:
+      description: 'List of IP address of servers which can generate backups'
+
+    cf-mysql-backup.symmetric_key:
+      description: 'Symmetric Key used to encrypt backups'
+    cf-mysql-backup.backup-client.output_folder:
+      description: 'Folder to place the prepared backups'
+      default: '/var/vcap/store/mysql-backups'
+    cf-mysql-backup.backup-client.tmp_folder:
+      description: 'Folder to download / prepare backups'
+      default: /var/vcap/store/mysql-backups-tmp
+    cf-mysql-backup.backup-server.port:
+      description: 'Port number of server that generates backups'
+      default: 8081
+    cf-mysql-backup.backup-all-masters:
+      description: 'If true, backups will be taken from all master nodes'
+      default: false
+    cf_mysql.proxy.arbitrator_ip:
+      description: 'IP address for the arbitrator nodes of the MySQL cluster to exclude from backups'
+    cf-mysql-backup.tls.ca_certificate:
+      description: 'CA certificate'
+    cf-mysql-backup.tls.server_name:
+      description: 'Common Name of the server certificate'

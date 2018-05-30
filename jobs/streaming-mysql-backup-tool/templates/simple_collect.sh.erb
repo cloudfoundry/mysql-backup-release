@@ -1,0 +1,24 @@
+#!/bin/bash
+
+PT_DEST="/var/vcap/sys/log/streaming-mysql-backup-tool"
+STATUS_DEST="${PT_DEST}/status.log"
+INNODB_STATUS_DEST="${PT_DEST}/innodbstatus.log"
+PROCESSLIST_DEST="${PT_DEST}/processlist.log"
+VMSTAT_DEST="${PT_DEST}/vmstat.log"
+
+MYSQL="/var/vcap/packages/mariadb/bin/mysql \
+	--defaults-file=<%= p('cf_mysql.mysql.defaults_file_path') %> \
+	-e "
+
+d=$(date +%F_%T |tr ":" "-")
+echo "###### ${d}" >> ${STATUS_DEST}
+$MYSQL "SHOW GLOBAL STATUS" >> ${STATUS_DEST}
+
+echo "###### ${d}" >> ${INNODB_STATUS_DEST}
+$MYSQL "SHOW ENGINE INNODB STATUS\G" >> ${INNODB_STATUS_DEST}
+
+echo "###### ${d}" >> ${PROCESSLIST_DEST}
+$MYSQL "SHOW FULL PROCESSLIST" >> ${PROCESSLIST_DEST}
+
+echo "###### ${d}" >> ${VMSTAT_DEST}
+vmstat 1 10 >> ${VMSTAT_DEST}

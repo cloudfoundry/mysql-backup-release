@@ -1,0 +1,68 @@
+#!/bin/bash -eux
+
+run_dir=/var/vcap/sys/run/streaming-mysql-backup-tool
+log_dir=/var/vcap/sys/log/streaming-mysql-backup-tool
+tmp_dir=/var/vcap/store/xtrabackup_tmp
+
+package_dir=/var/vcap/packages/streaming-mysql-backup-tool
+job_dir=/var/vcap/jobs/streaming-mysql-backup-tool
+
+pidfile=$run_dir/streaming-mysql-backup-tool.pid
+config_path=$job_dir/config/streaming-mysql-backup-tool.yml
+
+executable_name=streaming-mysql-backup-tool
+
+executable=$package_dir/bin/$executable_name
+
+log(){
+  message=$1
+  echo "$(date +"%Y-%m-%d %H:%M:%S") ----- $message"
+}
+
+# add xtrabackup to path
+export PATH=$PATH:/var/vcap/packages/xtrabackup/bin
+
+ulimit -n <%= p('cf-mysql-backup.ulimit') %>
+
+case $1 in
+
+  start)
+    log "Starting streaming-mysql-backup-tool..."
+
+    mkdir -p "${run_dir}"
+    mkdir -p "${log_dir}"
+    mkdir -p "${tmp_dir}"
+    chown -R vcap:vcap "${run_dir}"
+    chown -R vcap:vcap "${log_dir}"
+    chown -R vcap:vcap "${tmp_dir}"
+
+    /sbin/start-stop-daemon \
+      --start \
+      --oknodo \
+      --pidfile "${pidfile}" \
+      --chuid vcap:vcap \
+      --background \
+      --startas \
+      /bin/bash \
+      -- \
+      -c "exec ${executable} -configPath=$config_path \
+            >> ${log_dir}/streaming-mysql-backup-tool.stdout.log \
+            2>> ${log_dir}/streaming-mysql-backup-tool.stderr.log"
+
+    log "Starting streaming-mysql-backup-tool...done"
+    ;;
+
+  stop)
+    log "Stopping streaming-mysql-backup-tool..."
+    /sbin/start-stop-daemon \
+      --pidfile "${pidfile}" \
+      --retry TERM/20/QUIT/1/KILL \
+      --oknodo \
+      --stop
+    log "Stopping streaming-mysql-backup-tool... done"
+    ;;
+
+  *)
+    echo "Usage: streaming-mysql-backup-tool_ctl {start|stop}"
+    ;;
+esac

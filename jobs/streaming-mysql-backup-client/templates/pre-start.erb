@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+tmp_dir="<%= p('cf-mysql-backup.backup-client.tmp_folder') %>"
+
+mkdir -p /var/vcap/sys/log/streaming-mysql-backup-client
+mkdir -p "${tmp_dir}"
+
+chown -R vcap:vcap /var/vcap/sys/log/streaming-mysql-backup-client
+chown vcap:vcap "${tmp_dir}"

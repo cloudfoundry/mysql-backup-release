@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -eux
+
+MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( cd $MY_DIR/../.. && pwd )"
+
+# The "GOPATH" location that we tell the pipeline to install the resource into
+# Check `ci/tasks/unit-tests.yml` for path definition
+TMP_BUILD_DIR="$( cd $PROJECT_DIR/../../../.. && pwd )"
+
+export GOPATH=$TMP_BUILD_DIR
+export PATH=$GOPATH/bin:$PATH
+
+cd $PROJECT_DIR
+
+go get github.com/onsi/ginkgo/ginkgo
+go get github.com/GeertJohan/fgt
+go get ./...
+
+USE_FGT=true ./bin/test

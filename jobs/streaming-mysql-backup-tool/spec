@@ -1,0 +1,41 @@
+---
+name: streaming-mysql-backup-tool
+
+templates:
+    streaming-backup_ctl.erb: bin/streaming-backup_ctl
+    streaming-mysql-backup-tool.yml.erb: config/streaming-mysql-backup-tool.yml
+    simple_collect.sh.erb: bin/simple_collect.sh
+    server-key.pem.erb: certificates/server-key.pem
+    server-cert.pem.erb: certificates/server-cert.pem
+
+packages:
+- streaming-mysql-backup-tool
+
+provides:
+- name: mysql-backup-tool
+  type: mysql-backup-tool
+  properties:
+  - cf-mysql-backup.endpoint_credentials.username
+  - cf-mysql-backup.endpoint_credentials.password
+
+properties:
+  cf_mysql.mysql.defaults_file_path:
+    description: 'Path to the mysql defaults file used to authenticate to the database'
+    default: '/var/vcap/jobs/mysql/config/mylogin.cnf'
+  cf-mysql-backup.backup-server.port:
+    description: 'Port number used for listening for backup requests'
+    default: 8081
+  cf-mysql-backup.endpoint_credentials.username:
+    description: 'Username used by backup client to stream a backup from the mysql node'
+  cf-mysql-backup.endpoint_credentials.password:
+    description: 'Password used by backup client to stream a backup from the mysql node'
+  cf-mysql-backup.ulimit:
+    description: 'Maximum concurrent number of open files'
+    default: 65536
+  cf-mysql-backup.disabled:
+    description: 'If true, the tool will not be run'
+    default: false
+  cf-mysql-backup.tls.server_certificate:
+    description: 'certificate'
+  cf-mysql-backup.tls.server_key:
+    description: 'private key'

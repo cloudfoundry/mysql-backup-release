@@ -1,0 +1,23 @@
+---
+resources:
+  - name: streaming-mysql-backup-client
+    type: git
+    source:
+      uri: git@github.com:pivotal-cf-experimental/streaming-mysql-backup-client
+      branch: master
+      private_key: {{git-private-key}}
+
+jobs:
+  - name: unit-tests
+    plan:
+      - get: streaming-mysql-backup-client
+        trigger: true
+      - task: unit-tests
+        config:
+          platform: linux
+          image: docker:///cloudfoundry/cf-mysql-ci
+          inputs:
+            - name: streaming-mysql-backup-client
+              path: gopath/src/streaming-mysql-backup-client
+          run:
+            path: gopath/src/streaming-mysql-backup-client/ci/scripts/unit-tests

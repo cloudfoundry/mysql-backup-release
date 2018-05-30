@@ -1,0 +1,16 @@
+---
+resources:
+  - name: streaming-mysql-backup-tool
+    type: git
+    source:
+      uri: git@github.com:pivotal-cf-experimental/streaming-mysql-backup-tool
+      branch: master
+      private_key: {{git-private-key}}
+
+jobs:
+  - name: unit-tests
+    plan:
+      - get: streaming-mysql-backup-tool
+        trigger: true
+      - task: unit-tests
+        file: streaming-mysql-backup-tool/ci/tasks/unit-tests.yml

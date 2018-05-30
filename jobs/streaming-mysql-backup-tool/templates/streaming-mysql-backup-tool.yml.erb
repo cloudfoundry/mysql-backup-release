@@ -1,0 +1,20 @@
+<%=
+  require 'yaml'
+
+  username = p('cf-mysql-backup.endpoint_credentials.username')
+  password = p('cf-mysql-backup.endpoint_credentials.password')
+
+  YAML.dump({
+    "PidFile" => "/var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid",
+    "Command" => "xtrabackup --defaults-file=#{p('cf_mysql.mysql.defaults_file_path')} --backup --stream=tar --target-dir=/var/vcap/store/xtrabackup_tmp/",
+    "Port" => p('cf-mysql-backup.backup-server.port'),
+    "Credentials" => {
+      "Username" => username,
+      "Password" => password
+    },
+    "Certificates" => {
+      "Cert" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-cert.pem",
+      "Key" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-key.pem"
+    }
+  })
+%>

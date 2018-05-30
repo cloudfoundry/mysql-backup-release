@@ -1,0 +1,43 @@
+---
+packages:
+- name: golang
+  version: f57ddbc8d55d7a0f08775bf76bb6a27dc98c7ea7
+  fingerprint: f57ddbc8d55d7a0f08775bf76bb6a27dc98c7ea7
+  sha1: 48b9dadfcdecc3e2687aaaa9f7b6172b04940342
+  dependencies: []
+- name: mariadb
+  version: 755be9e717880707f032694c8217a89374c6fc85
+  fingerprint: 755be9e717880707f032694c8217a89374c6fc85
+  sha1: 17fd7cfc782e3001297f2f48f823e837ad0c1d03
+  dependencies: []
+- name: streaming-mysql-backup-client
+  version: 616c9d02c09e9aeb234a756be5de9bb2221553a6
+  fingerprint: 616c9d02c09e9aeb234a756be5de9bb2221553a6
+  sha1: 0a8bf715a042ed57c59e528113ea5a01a60cd7f1
+  dependencies:
+  - golang
+- name: streaming-mysql-backup-tool
+  version: b81f74a9d41a3ee7546017fc3f784be63e34e857
+  fingerprint: b81f74a9d41a3ee7546017fc3f784be63e34e857
+  sha1: 9ca0b6bf455931365ea73c92f484a625117d840f
+  dependencies:
+  - golang
+- name: xtrabackup
+  version: 2e701e7a9e4241b28052d984733de36aae152275
+  fingerprint: 2e701e7a9e4241b28052d984733de36aae152275
+  sha1: 67fac20c536006a141451c051f647aba755f78fb
+  dependencies:
+  - mariadb
+jobs:
+- name: streaming-mysql-backup-client
+  version: a79e005fc78c28d13aa9de9d8b2389fadc75156b
+  fingerprint: a79e005fc78c28d13aa9de9d8b2389fadc75156b
+  sha1: 1ad932e899a09e766d44e6455ea25d5e9ce46152
+- name: streaming-mysql-backup-tool
+  version: 52cede1133fe26934b45557bd6394fd5e7c76e64
+  fingerprint: 52cede1133fe26934b45557bd6394fd5e7c76e64
+  sha1: 99cf3a85abc24309b1dad0e31203bad099e83d2e
+commit_hash: e7ed8a2c
+uncommitted_changes: true
+name: mysql-backup
+version: '1'

@@ -1,0 +1,6 @@
+---
+name: xtrabackup
+
+
+files:
+  - xtrabackup/**/*

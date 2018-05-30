@@ -1,0 +1,68 @@
+---
+packages:
+- name: awscli
+  version: 5eb3dd5b75e7880e7905b3b2f80f11548de60fcc
+  fingerprint: 5eb3dd5b75e7880e7905b3b2f80f11548de60fcc
+  sha1: 2c4ca4fcedc76f4ba3d84e828971eb341b84f0c0
+  dependencies:
+  - python
+- name: golang
+  version: 48ce7b3927e6f7e6576fff21a7dc9d22b7ba9c62
+  fingerprint: 48ce7b3927e6f7e6576fff21a7dc9d22b7ba9c62
+  sha1: fcaf80bb5396bb4eed32363fa745da0b6f633107
+  dependencies: []
+- name: mariadb
+  version: 7151c0e33708df81cea35268c29d6e50619e7e04
+  fingerprint: 7151c0e33708df81cea35268c29d6e50619e7e04
+  sha1: c7b408859ae2656a84b7d7902d9dd497842683f0
+  dependencies: []
+- name: mysql-backup-common
+  version: 54b05d4c43ad80d7815b1ddfa6c98172aac01f73
+  fingerprint: 54b05d4c43ad80d7815b1ddfa6c98172aac01f73
+  sha1: f57c9a844e3abf5aafe4bdd0db478a9b1d925b63
+  dependencies: []
+- name: python
+  version: 4e255efa754d91b825476b57e111345f200944e1
+  fingerprint: 4e255efa754d91b825476b57e111345f200944e1
+  sha1: 8f6dab4b5ba4f39e66de115566dfc2e82d1323d9
+  dependencies: []
+- name: ruby
+  version: 1e7b91e63e8d3a6f55aef4b47b54e334f3a2130b
+  fingerprint: 1e7b91e63e8d3a6f55aef4b47b54e334f3a2130b
+  sha1: fe27e85e33f3f9b7db79b3db58e661dda725559d
+  dependencies: []
+- name: streaming-mysql-backup-client
+  version: 3d361ea6b476ae75be2013f8590e408d50de6a64
+  fingerprint: 3d361ea6b476ae75be2013f8590e408d50de6a64
+  sha1: 686817974ec7cf5ba8cf55e5b0ad78cd248b1a6c
+  dependencies:
+  - golang
+- name: streaming-mysql-backup-tool
+  version: e947777a0c00b4e5c5eaca984929d5f27f4ebfd8
+  fingerprint: e947777a0c00b4e5c5eaca984929d5f27f4ebfd8
+  sha1: e272c5b5f658753cae6d319636c00b4b31b06c12
+  dependencies:
+  - golang
+- name: xtrabackup
+  version: 2e701e7a9e4241b28052d984733de36aae152275
+  fingerprint: 2e701e7a9e4241b28052d984733de36aae152275
+  sha1: 67fac20c536006a141451c051f647aba755f78fb
+  dependencies:
+  - mariadb
+jobs:
+- name: streaming-mysql-backup-client
+  version: 15485a4d2e52cb80373d6d3bc8a197e689fc8b69
+  fingerprint: 15485a4d2e52cb80373d6d3bc8a197e689fc8b69
+  sha1: 970eeb9129b8549a9facb83e5e433881df1bed3e
+- name: streaming-mysql-backup-tool
+  version: e8a55563075eb8656a1d79e87a3d85e7fcc26397
+  fingerprint: e8a55563075eb8656a1d79e87a3d85e7fcc26397
+  sha1: 9358519d2d3901726b68b39601818b135adc73c8
+- name: test-restore
+  version: 58765989cf8e43c43810278b45a8d5d63d355b41
+  fingerprint: 58765989cf8e43c43810278b45a8d5d63d355b41
+  sha1: 2cdd367a8ba25d9289c81f5b371cc8a4ce18e55e
+commit_hash: c2858e56
+uncommitted_changes: true
+name: mysql-backup
+version: 1.29.0

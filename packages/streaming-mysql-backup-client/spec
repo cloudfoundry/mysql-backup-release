@@ -1,0 +1,8 @@
+---
+name: streaming-mysql-backup-client
+
+dependencies:
+- golang
+
+files:
+- streaming-mysql-backup-client/**/*

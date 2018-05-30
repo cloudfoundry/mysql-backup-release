@@ -1,0 +1,20 @@
+#!/bin/bash
+set -ex
+
+MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+PROJECT_DIR="$( cd $MY_DIR/.. && pwd )"
+
+pushd "${PROJECT_DIR}"
+  go generate $(go list ./... | grep -v /vendor/)
+
+  if [[ -z "$USE_FGT" ]]; then
+    go fmt $(go list ./... | grep -v /vendor/)
+  else
+    fgt go fmt $(go list ./... | grep -v /vendor/)
+  fi
+
+  go vet -x $(go list ./... | grep -v /vendor/)
+
+  ginkgo -p -r -race -failOnPending -randomizeAllSpecs "$@"
+popd

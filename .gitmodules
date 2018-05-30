@@ -1,0 +1,8 @@
+[submodule "src/github.com/onsi/ginkgo"]
+	path = src/github.com/onsi/ginkgo
+	url = git@github.com:onsi/ginkgo
+	branch = master
+[submodule "src/github.com/GeertJohan/fgt"]
+	path = src/github.com/GeertJohan/fgt
+	url = git@github.com:GeertJohan/fgt
+	branch = master

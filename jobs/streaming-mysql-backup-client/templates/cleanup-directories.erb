@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -eux
+
+output_folder="<%= p('cf-mysql-backup.backup-client.output_folder') %>"
+if [ -z "${output_folder}" ]; then
+  echo "Must specify cf-mysql-backup.backup-client.output_folder"
+  exit 1
+fi
+tmp_folder="<%= p('cf-mysql-backup.backup-client.tmp_folder') %>"
+if [ -z "${tmp_folder}" ]; then
+  echo "Must specify cf-mysql-backup.backup-client.tmp_folder"
+  exit 1
+fi
+
+rm -rf ${output_folder}/*
+rm -rf ${tmp_folder}/*

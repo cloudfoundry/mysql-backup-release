@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -eux
+
+git pull -r
+./bin/test
+git push

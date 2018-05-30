@@ -1,0 +1,42 @@
+---
+<%
+cluster_ips = nil
+if_p('cf_mysql.mysql.cluster_ips') do |ips|
+  cluster_ips = ips
+
+  # exclude arbitrator
+  if_p('cf_mysql.proxy.arbitrator_ip') do |arbitrator_ip|
+    cluster_ips.delete(arbitrator_ip)
+  end
+end.else do
+  cluster_ips = link('mysql').instances.map { |instance| instance.address }
+end
+
+urls = cluster_ips.collect do |cluster_ip|
+  "https://#{cluster_ip}:#{p('cf-mysql-backup.backup-server.port')}/backup"
+end
+
+if !p('cf-mysql-backup.backup-all-masters')
+  urls = [urls.last]
+end
+
+backup_tool_link = link('mysql-backup-tool')
+username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
+password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
+
+%>
+Urls: <%= urls %>
+TmpDir: <%= p('cf-mysql-backup.backup-client.tmp_folder') %>
+OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
+SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>
+Certificates:
+  CACert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/ca-certificate.pem"
+  <% if_p('cf-mysql-backup.tls.server_name') do |server_name| %>
+  ServerName: <%= server_name %>
+  <% end %>
+Credentials:
+  Username: <%= username %>
+  Password: <%= password %>
+MetadataFields:
+  compressed: Y
+  encrypted: Y

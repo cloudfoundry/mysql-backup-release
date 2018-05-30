@@ -1,0 +1,82 @@
+builds:
+  04acd1ab-396a-4292-7118-4408d997f353:
+    version: 1.32.0
+  0627663c-4a3b-43c4-5c08-8e1c61aa6da0:
+    version: 1.37.0
+  133d20f4-872c-4513-b993-55c6c6832e3c:
+    version: 1.30.0
+  180e1c87-227b-436c-b322-bdfdd17e9905:
+    version: 1.3.0
+  2c170877-8bdd-487d-7b3f-a6044f5f71eb:
+    version: 2.3.0
+  3492fde6-def3-4205-a839-a3576155a78b:
+    version: 1.6.0
+  36a1e4db-1e4a-466d-6c88-1cbb9d705b53:
+    version: 1.34.0
+  52da7f5f-18b5-4d01-9cef-94aa426a2d48:
+    version: 1.19.0
+  5c786d52-40a9-47a8-9b5e-ef43d705eac3:
+    version: 1.29.0
+  5e987372-dfe4-4736-b4f5-32e96e780843:
+    version: 1.28.0
+  633cf59e-73f5-44ba-b9f7-1591563f815b:
+    version: 1.22.0
+  685a28cb-a579-451b-a8ec-6b521ca62e39:
+    version: 1.21.0
+  6a26e597-5cb7-45f4-8450-edaf028fe6f3:
+    version: 1.10.0
+  73654c45-98af-4727-7504-e774d6e4925b:
+    version: 1.35.0
+  748a0149-8d90-4823-8bf9-53eed4cb8f8a:
+    version: "1"
+  751ec440-87f4-482c-86e4-6fa4e50bb4c3:
+    version: 1.7.0
+  7d6fd779-631a-4e83-6741-c60fcbc97540:
+    version: 1.36.0
+  82d77ba4-03c4-4d2d-87e4-cc4f2f008797:
+    version: 1.2.0
+  83810106-a643-4f53-4350-6fd455f05558:
+    version: 2.4.0
+  8d0f5b1e-ca77-43b0-8881-9d6c8ff94073:
+    version: 1.24.0
+  8fc38b3b-bdb6-43b3-b916-0358689fbc98:
+    version: 1.12.0
+  91d0b652-d720-4874-65a4-dbad097ead12:
+    version: 1.38.0
+  975a5591-8c47-4b59-a5d5-324ed30c8f06:
+    version: 1.15.0
+  98b07266-8c0c-4710-bdb3-2e0e249b325c:
+    version: 1.11.0
+  9dcbb70c-4e36-441e-906d-00e3c7d0fd10:
+    version: 1.8.0
+  a142282b-2611-479d-b2a6-09c3daab700b:
+    version: 1.16.0
+  a8c733fb-2684-411f-72b8-e4d28fa9a40b:
+    version: 2.2.0
+  af3aa765-d772-469a-7282-0f79f1c6297b:
+    version: 2.1.0
+  af41c8c1-f4ce-4d6a-5fe3-cdeecb96d842:
+    version: 1.31.0
+  b1c18617-48df-488a-7a05-5c83088adf39:
+    version: 1.33.0
+  b362e395-7dfe-4c19-bbb5-cd9dec80d1ca:
+    version: 1.25.0
+  b73394f2-5aec-4dfa-b7fc-bd79f2e54ad8:
+    version: 1.26.0
+  b9c63fb8-f19b-4861-9b43-b4d7374c8576:
+    version: 1.9.0
+  c33a909c-2600-4798-9edc-35fc6560ed58:
+    version: 1.13.0
+  d360f5e4-52c0-4910-985e-9531fb574a0a:
+    version: 1.23.0
+  db242b9a-a59e-4d85-8727-0273b781d66b:
+    version: 1.27.0
+  dcbed104-2607-4dd8-bed8-c213e19db7d4:
+    version: 1.18.0
+  dd8825d6-9a0a-4cf8-bb50-7c58eb368d87:
+    version: 1.20.0
+  f7e0088a-49f9-4b6d-b4ee-1f2b664e593b:
+    version: 1.17.0
+  fb4c4982-58b9-45d9-b784-1ce37b79579d:
+    version: 1.14.0
+format-version: "2"

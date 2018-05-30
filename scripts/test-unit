@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -eux
+
+MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+RELEASE_DIR="$( cd $MY_DIR/.. && pwd )"
+
+source ${RELEASE_DIR}/.envrc
+
+# Remove and reinstall the ginkgo binary as it might be from the wrong target architecture
+rm -rf ${RELEASE_DIR}/bin/ginkgo
+rm -rf ${RELEASE_DIR}/bin/fgt
+
+go get github.com/onsi/ginkgo/ginkgo
+go get github.com/GeertJohan/fgt
+go get github.com/maxbrunsfeld/counterfeiter
+
+echo -e "\nTesting Streaming backup tool..."
+${RELEASE_DIR}/src/streaming-mysql-backup-tool/bin/test "$@"
+
+echo -e "\nTesting Streaming backup client..."
+${RELEASE_DIR}/src/streaming-mysql-backup-client/bin/test "$@"
