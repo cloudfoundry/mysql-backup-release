@@ -21,9 +21,6 @@ consumes:
   type: mysql-backup-tool
 
 properties:
-    cf_mysql.mysql.cluster_ips:
-      description: 'List of IP address of servers which can generate backups'
-
     cf-mysql-backup.symmetric_key:
       description: 'Symmetric Key used to encrypt backups'
     cf-mysql-backup.backup-client.output_folder:
@@ -38,8 +35,6 @@ properties:
     cf-mysql-backup.backup-all-masters:
       description: 'If true, backups will be taken from all master nodes'
       default: false
-    cf_mysql.proxy.arbitrator_ip:
-      description: 'IP address for the arbitrator nodes of the MySQL cluster to exclude from backups'
     cf-mysql-backup.tls.ca_certificate:
       description: 'CA certificate'
     cf-mysql-backup.tls.server_name:

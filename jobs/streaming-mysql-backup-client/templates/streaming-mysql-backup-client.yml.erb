@@ -1,16 +1,10 @@
 ---
 <%
-cluster_ips = nil
-if_p('cf_mysql.mysql.cluster_ips') do |ips|
-  cluster_ips = ips
+backup_tool_link = link('mysql-backup-tool')
+username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
+password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
-  # exclude arbitrator
-  if_p('cf_mysql.proxy.arbitrator_ip') do |arbitrator_ip|
-    cluster_ips.delete(arbitrator_ip)
-  end
-end.else do
-  cluster_ips = link('mysql').instances.map { |instance| instance.address }
-end
+cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
 
 urls = cluster_ips.collect do |cluster_ip|
   "https://#{cluster_ip}:#{p('cf-mysql-backup.backup-server.port')}/backup"
@@ -19,10 +13,6 @@ end
 if !p('cf-mysql-backup.backup-all-masters')
   urls = [urls.last]
 end
-
-backup_tool_link = link('mysql-backup-tool')
-username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
-password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
 %>
 Urls: <%= urls %>
