@@ -29,7 +29,9 @@ var _ = Describe("ClientConfig", func() {
 	Describe("Validate", func() {
 		BeforeEach(func() {
 			configuration = `{
-				"Urls": ["fakeUrl"],
+				"Ips": ["fakeIp"],
+				"BackupServerPort": 8081,
+				"BackupAllMasters": false,
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
@@ -47,8 +49,8 @@ var _ = Describe("ClientConfig", func() {
 			err := rootConfig.Validate()
 			Expect(err).NotTo(HaveOccurred())
 		})
-		It("returns an error if urls is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Urls")
+		It("returns an error if ips is blank", func() {
+			err := test_helpers.IsRequiredField(rootConfig, "Ips")
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("returns an error if username is blank", func() {

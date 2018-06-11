@@ -42,11 +42,13 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 		logger = lagertest.NewTestLogger("backup-download-test")
 
 		rootConfig = &config.Config{
-			Urls:         []string{"node1"},
-			TmpDir:       outputDirectory,
-			OutputDir:    outputDirectory,
-			Logger:       logger,
-			SymmetricKey: "hello",
+			Ips:              []string{"node1"},
+			BackupServerPort: 1234,
+			BackupAllMasters: false,
+			TmpDir:           outputDirectory,
+			OutputDir:        outputDirectory,
+			Logger:           logger,
+			SymmetricKey:     "hello",
 			MetadataFields: map[string]string{
 				"compressed": "Y",
 				"encrypted":  "Y",
@@ -123,39 +125,120 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 
 	Context("When there are multiple URLs", func() {
 		BeforeEach(func() {
-			rootConfig.Urls = []string{"node1", "node2", "node3"}
+			rootConfig.Ips = []string{"node1", "node2", "node3"}
+		})
+
+		Context("When BackupAllMasters is true", func() {
+			BeforeEach(func() {
+				rootConfig.BackupAllMasters = true
+			})
+
+			Context("When successful", func() {
+				It("Creates a backup for each URL", func() {
+					fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("true"))
+					fakeBackupPreparer.CommandReturnsOnCall(1, exec.Command("true"))
+					fakeBackupPreparer.CommandReturnsOnCall(2, exec.Command("true"))
+
+					Expect(backupClient.Execute()).To(Succeed())
+
+					matches, err := filepath.Glob(filepath.Join(outputDirectory, backupFileGlob))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(matches).To(HaveLen(3))
+
+					matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(matches).To(HaveLen(3))
+				})
+			})
+
+			Context("When unsuccessful", func() {
+				Context("when all fail", func() {
+					BeforeEach(func() {
+						fakeBackupPreparer.CommandReturns(exec.Command("false"))
+					})
+
+					It("Returns the error", func() {
+						err := backupClient.Execute()
+						Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(3))
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(MatchRegexp(`multiple errors:`))
+						Expect(err).To(HaveLen(3))
+					})
+
+					It("Logs the failure messages", func() {
+						_ = backupClient.Execute()
+
+						Expect(logger.TestSink.Logs()).To(ContainElement(
+							MatchFields(IgnoreExtras, Fields{
+								"Message":  ContainSubstring("Preparing the backup failed"),
+								"LogLevel": Equal(lager.ERROR),
+								"Data": SatisfyAll(
+									HaveKey("output"),
+									HaveKeyWithValue("error", ContainSubstring("exit status 1")),
+									HaveKeyWithValue("ip", Equal("node1")),
+								),
+							}),
+						))
+					})
+				})
+
+				Context("when at least one is successful", func() {
+					BeforeEach(func() {
+						fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("false"))
+						fakeBackupPreparer.CommandReturnsOnCall(1, exec.Command("false"))
+						fakeBackupPreparer.CommandReturnsOnCall(2, exec.Command("true"))
+
+						expectFileToNotExist(filepath.Join(outputDirectory, backupFileGlob))
+						expectFileToNotExist(filepath.Join(outputDirectory, backupMetadataGlob))
+					})
+
+					It("Continues to create backups and exits successfully", func() {
+						Expect(backupClient.Execute()).To(Succeed())
+
+						Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(3))
+
+						matches, err := filepath.Glob(filepath.Join(outputDirectory, backupFileGlob))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(matches).To(HaveLen(1))
+
+						matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(matches).To(HaveLen(1))
+					})
+				})
+			})
 		})
 
 		Context("When successful", func() {
-			It("Creates a backup for each URL", func() {
+			It("Creates a backup for the last node in the array", func() {
 				fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("true"))
-				fakeBackupPreparer.CommandReturnsOnCall(1, exec.Command("true"))
-				fakeBackupPreparer.CommandReturnsOnCall(2, exec.Command("true"))
 
 				Expect(backupClient.Execute()).To(Succeed())
 
 				matches, err := filepath.Glob(filepath.Join(outputDirectory, backupFileGlob))
 				Expect(err).ToNot(HaveOccurred())
-				Expect(matches).To(HaveLen(3))
+				Expect(matches).To(HaveLen(1))
 
 				matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
 				Expect(err).ToNot(HaveOccurred())
-				Expect(matches).To(HaveLen(3))
+				Expect(matches).To(HaveLen(1))
+
+				Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node3:1234/backup"))
 			})
 		})
 
 		Context("When unsuccessful", func() {
-			Context("when all fail", func() {
+			Context("when it fails", func() {
 				BeforeEach(func() {
 					fakeBackupPreparer.CommandReturns(exec.Command("false"))
 				})
 
 				It("Returns the error", func() {
 					err := backupClient.Execute()
-					Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(3))
+					Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(1))
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(MatchRegexp(`multiple errors:`))
-					Expect(err).To(HaveLen(3))
+					Expect(err.Error()).To(ContainSubstring("exit status 1"))
+					Expect(err).To(HaveLen(1))
 				})
 
 				It("Logs the failure messages", func() {
@@ -168,35 +251,10 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 							"Data": SatisfyAll(
 								HaveKey("output"),
 								HaveKeyWithValue("error", ContainSubstring("exit status 1")),
-								HaveKeyWithValue("url", Equal("node1")),
+								HaveKeyWithValue("ip", Equal("node3")),
 							),
 						}),
 					))
-				})
-			})
-
-			Context("when at least one is successful", func() {
-				BeforeEach(func() {
-					fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("false"))
-					fakeBackupPreparer.CommandReturnsOnCall(1, exec.Command("false"))
-					fakeBackupPreparer.CommandReturnsOnCall(2, exec.Command("true"))
-
-					expectFileToNotExist(filepath.Join(outputDirectory, backupFileGlob))
-					expectFileToNotExist(filepath.Join(outputDirectory, backupMetadataGlob))
-				})
-
-				It("Continues to create backups and exits successfully", func() {
-					Expect(backupClient.Execute()).To(Succeed())
-
-					Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(3))
-
-					matches, err := filepath.Glob(filepath.Join(outputDirectory, backupFileGlob))
-					Expect(err).ToNot(HaveOccurred())
-					Expect(matches).To(HaveLen(1))
-
-					matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
-					Expect(err).ToNot(HaveOccurred())
-					Expect(matches).To(HaveLen(1))
 				})
 			})
 		})

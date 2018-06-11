@@ -49,8 +49,6 @@ type BackupPreparer interface {
 type Client struct {
 	config               config.Config
 	version              int64
-	index                int
-	metadataArtifactName string
 	tarClient            *tarpit.TarClient
 	backupPreparer       BackupPreparer
 	downloader           Downloader
@@ -84,8 +82,8 @@ func NewClient(config config.Config, tarClient *tarpit.TarClient, backupPreparer
 	return client
 }
 
-func (this Client) artifactName() string {
-	return fmt.Sprintf("mysql-backup-%d-%d", this.version, this.index)
+func (this Client) artifactName(index int) string {
+	return fmt.Sprintf("mysql-backup-%d-%d", this.version, index)
 }
 
 func (this Client) downloadedBackupLocation() string {
@@ -96,98 +94,114 @@ func (this Client) preparedBackupLocation() string {
 	return path.Join(this.encryptDirectory, "prepared-backup.tar")
 }
 
-func (this Client) encryptedBackupLocation() string {
-	return path.Join(this.config.OutputDir, fmt.Sprintf("%s.tar.gpg", this.artifactName()))
+func (this Client) encryptedBackupLocation(index int) string {
+	return path.Join(this.config.OutputDir, fmt.Sprintf("%s.tar.gpg", this.artifactName(index)))
 }
 
 func (this Client) originalMetadataLocation() string {
 	return path.Join(this.prepareDirectory, "xtrabackup_info")
 }
 
-func (this Client) finalMetadataLocation() string {
-	return path.Join(this.config.OutputDir, fmt.Sprintf("%s.txt", this.artifactName()))
+func (this Client) finalMetadataLocation(index int) string {
+	return path.Join(this.config.OutputDir, fmt.Sprintf("%s.txt", this.artifactName(index)))
 }
 
 func (this *Client) Execute() error {
 	var errors MultiError
-	for i := 0; i < len(this.config.Urls); i++ {
+	var ips []string
+	if this.config.BackupAllMasters {
+		ips = this.config.Ips
+	} else {
+		ips = []string{this.config.Ips[len(this.config.Ips)-1]}
+	}
+	for index, ip := range ips {
 		this.version = time.Now().Unix()
-		this.index = i
-		err := this.runTasksSequentially(
-			this.createDirectories,
-			this.downloadAndUntarBackup,
-			this.prepareBackup,
-			this.writeMetadataFile,
-			this.tarAndEncryptBackup,
-		)
+
+		err := this.BackupNode(ip, index)
 		if err != nil {
 			errors = append(errors, err)
 		}
-		this.cleanDirectories() //ensure directories are cleaned on error
+		this.cleanDirectories(ip) //ensure directories are cleaned on error
 	}
-	if len(errors) == len(this.config.Urls) {
+
+	if len(errors) == len(ips) {
 		return errors
 	}
 	return nil
 }
 
-func (this *Client) logError(action string, err error, data ...lager.Data) {
+func (this *Client) BackupNode(ip string, index int) error {
+	var err error
+	err = this.createDirectories(ip)
+	if err != nil {
+		return err
+	}
+	err = this.downloadAndUntarBackup(ip)
+	if err != nil {
+		return err
+	}
+	err = this.prepareBackup(ip)
+	if err != nil {
+		return err
+	}
+	err = this.writeMetadataFile(ip, index)
+	if err != nil {
+		return err
+	}
+	err = this.tarAndEncryptBackup(ip, index)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *Client) logError(ip string, action string, err error, data ...lager.Data) {
 	extraData := lager.Data{
-		"url": this.config.Urls[this.index],
+		"ip": ip,
 	}
 	data = append(data, extraData)
 	this.logger.Error(action, err, data...)
 }
 
-func (this *Client) logInfo(action string, data ...lager.Data) {
+func (this *Client) logInfo(ip string, action string, data ...lager.Data) {
 	extraData := lager.Data{
-		"url": this.config.Urls[this.index],
+		"ip": ip,
 	}
 	data = append(data, extraData)
 	this.logger.Info(action, data...)
 }
 
-func (this *Client) logDebug(action string, data ...lager.Data) {
+func (this *Client) logDebug(ip string, action string, data ...lager.Data) {
 	extraData := lager.Data{
-		"url": this.config.Urls[this.index],
+		"ip": ip,
 	}
 	data = append(data, extraData)
 	this.logger.Debug(action, data...)
 }
 
-func (this *Client) runTasksSequentially(tasks ...func() error) error {
-	for _, task := range tasks {
-		if err := task(); err != nil {
-			return err
-		}
-	}
-	this.logInfo("Successful execution of client tasks")
-	return nil
-}
-
-func (this *Client) createDirectories() error {
-	this.logDebug("Creating directories")
+func (this *Client) createDirectories(ip string) error {
+	this.logDebug(ip, "Creating directories")
 
 	var err error
 	this.downloadDirectory, err = ioutil.TempDir(this.config.TmpDir, "mysql-backup-downloads")
 	if err != nil {
-		this.logError("Error creating temporary directory 'mysql-backup-downloads'", err)
+		this.logError(ip, "Error creating temporary directory 'mysql-backup-downloads'", err)
 		return err
 	}
 
 	this.prepareDirectory, err = ioutil.TempDir(this.config.TmpDir, "mysql-backup-prepare")
 	if err != nil {
-		this.logError("Error creating temporary directory 'mysql-backup-prepare'", err)
+		this.logError(ip, "Error creating temporary directory 'mysql-backup-prepare'", err)
 		return err
 	}
 
 	this.encryptDirectory, err = ioutil.TempDir(this.config.TmpDir, "mysql-backup-encrypt")
 	if err != nil {
-		this.logError("Error creating temporary directory 'mysql-backup-encrypt'", err)
+		this.logError(ip, "Error creating temporary directory 'mysql-backup-encrypt'", err)
 		return err
 	}
 
-	this.logDebug("Created directories", lager.Data{
+	this.logDebug(ip, "Created directories", lager.Data{
 		"downloadDirectory": this.downloadDirectory,
 		"prepareDirectory":  this.prepareDirectory,
 		"encryptDirectory":  this.encryptDirectory,
@@ -196,42 +210,43 @@ func (this *Client) createDirectories() error {
 	return nil
 }
 
-func (this *Client) downloadAndUntarBackup() error {
-	this.logInfo("Starting download of backup", lager.Data{
+func (this *Client) downloadAndUntarBackup(ip string) error {
+	this.logInfo(ip, "Starting download of backup", lager.Data{
 		"backup-prepare-path": this.prepareDirectory,
 	})
 
-	err := this.downloader.DownloadBackup(this.config.Urls[this.index], tarpit.NewUntarStreamer(this.prepareDirectory))
+	url := fmt.Sprintf("https://%s:%d/backup", ip, this.config.BackupServerPort)
+	err := this.downloader.DownloadBackup(url, tarpit.NewUntarStreamer(this.prepareDirectory))
 	if err != nil {
-		this.logError("DownloadBackup failed", err)
+		this.logError(ip, "DownloadBackup failed", err)
 		return err
 	}
 
-	this.logInfo("Finished downloading backup", lager.Data{
+	this.logInfo(ip, "Finished downloading backup", lager.Data{
 		"backup-prepare-path": this.prepareDirectory,
 	})
 
 	return nil
 }
 
-func (this *Client) prepareBackup() error {
+func (this *Client) prepareBackup(ip string) error {
 	backupPrepare := this.backupPreparer.Command(this.prepareDirectory)
-	this.logDebug("Backup prepare command", lager.Data{
+	this.logDebug(ip, "Backup prepare command", lager.Data{
 		"command": backupPrepare,
 		"args":    backupPrepare.Args,
 	})
 
-	this.logInfo("Starting prepare of backup", lager.Data{
+	this.logInfo(ip, "Starting prepare of backup", lager.Data{
 		"prepareDirectory": this.prepareDirectory,
 	})
 	output, err := backupPrepare.CombinedOutput()
 	if err != nil {
-		this.logError("Preparing the backup failed", err, lager.Data{
+		this.logError(ip, "Preparing the backup failed", err, lager.Data{
 			"output": output,
 		})
 		return err
 	}
-	this.logInfo("Successfully prepared a backup")
+	this.logInfo(ip, "Successfully prepared a backup")
 
 	return nil
 }
@@ -246,11 +261,11 @@ func (this *Client) prepareBackup() error {
 // this concrete file dependency
 //
 // See: https://www.pivotaltracker.com/story/show/98994636
-func (this *Client) writeMetadataFile() error {
+func (this *Client) writeMetadataFile(ip string, index int) error {
 	src := this.originalMetadataLocation()
-	dst := this.finalMetadataLocation()
+	dst := this.finalMetadataLocation(index)
 
-	this.logInfo("Copying metadata file", lager.Data{
+	this.logInfo(ip, "Copying metadata file", lager.Data{
 		"from": src,
 		"to":   dst,
 	})
@@ -262,7 +277,7 @@ func (this *Client) writeMetadataFile() error {
 
 	backupMetadataMap, err := fileutils.ExtractFileFields(src)
 	if err != nil {
-		this.logError("Opening xtrabackup-info file failed", err)
+		this.logError(ip, "Opening xtrabackup-info file failed", err)
 		return err
 	}
 
@@ -274,96 +289,96 @@ func (this *Client) writeMetadataFile() error {
 		keyValLine := fmt.Sprintf("%s = %s", key, value)
 		err = fileutils.WriteLineToFile(dst, keyValLine)
 		if err != nil {
-			this.logError("Writing metadata file failed", err)
+			this.logError(ip, "Writing metadata file failed", err)
 			return err
 		}
 	}
 
-	this.logInfo("Finished writing metadata file")
+	this.logInfo(ip, "Finished writing metadata file")
 
 	return nil
 }
 
-func (this *Client) tarAndEncryptBackup() error {
-	this.logInfo("Starting encrypting backup")
+func (this *Client) tarAndEncryptBackup(ip string, index int) error {
+	this.logInfo(ip, "Starting encrypting backup")
 
 	tarCmd := this.tarClient.Tar(this.prepareDirectory)
 
-	encryptedFileWriter, err := os.Create(this.encryptedBackupLocation())
+	encryptedFileWriter, err := os.Create(this.encryptedBackupLocation(index))
 	if err != nil {
-		this.logError("Error creating encrypted backup file", err)
+		this.logError(ip, "Error creating encrypted backup file", err)
 		return err
 	}
 	defer encryptedFileWriter.Close()
 
 	stdoutPipe, err := tarCmd.StdoutPipe()
 	if err != nil {
-		this.logError("Error attaching stdout to encryption", err)
+		this.logError(ip, "Error attaching stdout to encryption", err)
 		return err
 	}
 
 	if err := tarCmd.Start(); err != nil {
-		this.logError("Error starting tar command", err)
+		this.logError(ip, "Error starting tar command", err)
 		return err
 	}
 
 	if err := this.encryptor.Encrypt(stdoutPipe, encryptedFileWriter); err != nil {
-		this.logError("Error while encrypting backup file", err)
+		this.logError(ip, "Error while encrypting backup file", err)
 		return err
 	}
 
 	if err := tarCmd.Wait(); err != nil {
-		this.logError("Error while executing tar command", err)
+		this.logError(ip, "Error while executing tar command", err)
 		return err
 	}
 
-	this.logInfo("Successfully encrypted backup")
+	this.logInfo(ip, "Successfully encrypted backup")
 	return nil
 }
 
-func (this *Client) cleanDownloadDirectory() error {
+func (this *Client) cleanDownloadDirectory(ip string) error {
 	err := os.RemoveAll(this.downloadDirectory)
 	if err != nil {
-		this.logError(fmt.Sprintf("Failed to remove %s", this.downloadDirectory), err)
+		this.logError(ip, fmt.Sprintf("Failed to remove %s", this.downloadDirectory), err)
 		return err
 	}
 
-	this.logDebug("Cleaned download directory")
+	this.logDebug(ip, "Cleaned download directory")
 	return nil
 }
 
-func (this *Client) cleanPrepareDirectory() error {
+func (this *Client) cleanPrepareDirectory(ip string) error {
 	err := os.RemoveAll(this.prepareDirectory)
 	if err != nil {
-		this.logError(fmt.Sprintf("Failed to remove %s", this.prepareDirectory), err)
+		this.logError(ip, fmt.Sprintf("Failed to remove %s", this.prepareDirectory), err)
 		return err
 	}
 
-	this.logDebug("Cleaned prepare directory")
+	this.logDebug(ip, "Cleaned prepare directory")
 	return nil
 }
 
-func (this *Client) cleanEncryptDirectory() error {
+func (this *Client) cleanEncryptDirectory(ip string) error {
 	err := os.RemoveAll(this.encryptDirectory)
 	if err != nil {
-		this.logError(fmt.Sprintf("Failed to remove %s", this.encryptDirectory), err)
+		this.logError(ip, fmt.Sprintf("Failed to remove %s", this.encryptDirectory), err)
 		return err
 	}
 
-	this.logDebug("Cleaned encrypt directory")
+	this.logDebug(ip, "Cleaned encrypt directory")
 	return nil
 }
 
-func (this *Client) cleanDirectories() error {
-	this.logDebug("Cleaning directories", lager.Data{
+func (this *Client) cleanDirectories(ip string) error {
+	this.logDebug(ip, "Cleaning directories", lager.Data{
 		"downloadDirectory": this.downloadDirectory,
 		"prepareDirectory":  this.prepareDirectory,
 		"encryptDirectory":  this.encryptDirectory,
 	})
 
 	//continue execution even if cleanup fails
-	_ = this.cleanDownloadDirectory()
-	_ = this.cleanPrepareDirectory()
-	_ = this.cleanEncryptDirectory()
+	_ = this.cleanDownloadDirectory(ip)
+	_ = this.cleanPrepareDirectory(ip)
+	_ = this.cleanEncryptDirectory(ip)
 	return nil
 }

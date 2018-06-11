@@ -5,17 +5,12 @@ username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
 password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
 cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
-
-urls = cluster_ips.collect do |cluster_ip|
-  "https://#{cluster_ip}:#{p('cf-mysql-backup.backup-server.port')}/backup"
-end
-
-if !p('cf-mysql-backup.backup-all-masters')
-  urls = [urls.last]
-end
+backup_server_port = p('cf-mysql-backup.backup-server.port')
 
 %>
-Urls: <%= urls %>
+Ips: <%= cluster_ips %>
+BackupServerPort: <%= backup_server_port %>
+BackupAllMasters: <%= p('cf-mysql-backup.backup-all-masters') %>
 TmpDir: <%= p('cf-mysql-backup.backup-client.tmp_folder') %>
 OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
 SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>
