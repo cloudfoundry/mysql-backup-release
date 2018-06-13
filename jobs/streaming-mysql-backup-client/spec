@@ -35,6 +35,9 @@ properties:
     cf-mysql-backup.backup-all-masters:
       description: 'If true, backups will be taken from all master nodes'
       default: false
+    cf-mysql-backup.backup_from_inactive_node:
+      description: 'If true, backups will be taken from the galera node with the highest wsrep_local_index'
+      default: false
     cf-mysql-backup.tls.ca_certificate:
       description: 'CA certificate'
     cf-mysql-backup.tls.server_name:

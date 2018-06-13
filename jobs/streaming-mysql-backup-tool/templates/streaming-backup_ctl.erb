@@ -20,7 +20,7 @@ log(){
 }
 
 # add xtrabackup to path
-export PATH=$PATH:/var/vcap/packages/xtrabackup/bin
+export PATH=$PATH:<%= p('cf-mysql-backup.xtrabackup_path') %>
 
 ulimit -n <%= p('cf-mysql-backup.ulimit') %>
 

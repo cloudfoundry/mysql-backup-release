@@ -16,6 +16,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"errors"
 	"streaming-mysql-backup-client/client"
 	"streaming-mysql-backup-client/client/clientfakes"
 	"streaming-mysql-backup-client/tarpit"
@@ -28,6 +29,7 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 		rootConfig         *config.Config
 		fakeDownloader     *clientfakes.FakeDownloader
 		fakeBackupPreparer *clientfakes.FakeBackupPreparer
+		fakeGaleraAgent    *clientfakes.FakeGaleraAgentCallerInterface
 		tarClient          *tarpit.TarClient
 		logger             *lagertest.TestLogger
 		backupFileGlob     = `mysql-backup-*.tar.gpg`
@@ -68,10 +70,12 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 
 			return streamedWriter.WriteStream(file)
 		}
+
+		fakeGaleraAgent = &clientfakes.FakeGaleraAgentCallerInterface{}
 	})
 
 	JustBeforeEach(func() {
-		backupClient = client.NewClient(*rootConfig, tarClient, fakeBackupPreparer, fakeDownloader)
+		backupClient = client.NewClient(*rootConfig, tarClient, fakeBackupPreparer, fakeDownloader, fakeGaleraAgent)
 	})
 
 	AfterEach(func() {
@@ -209,6 +213,70 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 			})
 		})
 
+		Context("When BackupFromInactiveNode is true", func() {
+			BeforeEach(func() {
+				rootConfig.BackupFromInactiveNode = true
+				fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(0, 1, nil)
+				fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(1, 3, nil)
+				fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(2, 2, nil)
+			})
+
+			Context("When successful", func() {
+				It("Creates a backup only for the inactive node", func() {
+					fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("true"))
+
+					Expect(backupClient.Execute()).To(Succeed())
+
+					matches, err := filepath.Glob(filepath.Join(outputDirectory, backupFileGlob))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(matches).To(HaveLen(1))
+
+					matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(matches).To(HaveLen(1))
+
+					Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node2:1234/backup"))
+				})
+			})
+
+			Context("When zero nodes are healthy", func() {
+				BeforeEach(func() {
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(0, -1, errors.New("unhealthy?"))
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(1, -1, errors.New("unhealthy?"))
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(2, -1, errors.New("unhealthy?"))
+				})
+
+				It("Returns an error", func() {
+					err := backupClient.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("No healthy nodes found"))
+				})
+			})
+
+			Context("When one node is unhealthy", func() {
+				BeforeEach(func() {
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(0, 1, nil)
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(1, 2, nil)
+					fakeGaleraAgent.WsrepLocalIndexReturnsOnCall(2, -1, errors.New("unhealthy!"))
+				})
+
+				It("Logs the failure messages", func() {
+					_ = backupClient.Execute()
+
+					Expect(logger.TestSink.Logs()).To(ContainElement(
+						MatchFields(IgnoreExtras, Fields{
+							"Message":  ContainSubstring("Fetching node status from galera agent failed"),
+							"LogLevel": Equal(lager.ERROR),
+							"Data": SatisfyAll(
+								HaveKeyWithValue("error", ContainSubstring("unhealthy!")),
+								HaveKeyWithValue("ip", Equal("node3")),
+							),
+						}),
+					))
+				})
+			})
+		})
+
 		Context("When successful", func() {
 			It("Creates a backup for the last node in the array", func() {
 				fakeBackupPreparer.CommandReturnsOnCall(0, exec.Command("true"))
@@ -228,34 +296,32 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 		})
 
 		Context("When unsuccessful", func() {
-			Context("when it fails", func() {
-				BeforeEach(func() {
-					fakeBackupPreparer.CommandReturns(exec.Command("false"))
-				})
+			BeforeEach(func() {
+				fakeBackupPreparer.CommandReturns(exec.Command("false"))
+			})
 
-				It("Returns the error", func() {
-					err := backupClient.Execute()
-					Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(1))
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("exit status 1"))
-					Expect(err).To(HaveLen(1))
-				})
+			It("Returns the error", func() {
+				err := backupClient.Execute()
+				Expect(fakeBackupPreparer.CommandCallCount()).To(Equal(1))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("exit status 1"))
+				Expect(err).To(HaveLen(1))
+			})
 
-				It("Logs the failure messages", func() {
-					_ = backupClient.Execute()
+			It("Logs the failure messages", func() {
+				_ = backupClient.Execute()
 
-					Expect(logger.TestSink.Logs()).To(ContainElement(
-						MatchFields(IgnoreExtras, Fields{
-							"Message":  ContainSubstring("Preparing the backup failed"),
-							"LogLevel": Equal(lager.ERROR),
-							"Data": SatisfyAll(
-								HaveKey("output"),
-								HaveKeyWithValue("error", ContainSubstring("exit status 1")),
-								HaveKeyWithValue("ip", Equal("node3")),
-							),
-						}),
-					))
-				})
+				Expect(logger.TestSink.Logs()).To(ContainElement(
+					MatchFields(IgnoreExtras, Fields{
+						"Message":  ContainSubstring("Preparing the backup failed"),
+						"LogLevel": Equal(lager.ERROR),
+						"Data": SatisfyAll(
+							HaveKey("output"),
+							HaveKeyWithValue("error", ContainSubstring("exit status 1")),
+							HaveKeyWithValue("ip", Equal("node3")),
+						),
+					}),
+				))
 			})
 		})
 	})

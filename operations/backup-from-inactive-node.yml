@@ -1,0 +1,4 @@
+---
+- type: replace
+  path: /instance_groups/name=backup-prepare/jobs/name=streaming-mysql-backup-client/properties/cf-mysql-backup?/backup_from_inactive_node
+  value: true

@@ -1,0 +1,13 @@
+package galera_agent_caller_test
+
+import (
+	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
+
+func TestGaleraAgent(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Streaming MySQL Backup Galera Agent Caller Suite")
+}

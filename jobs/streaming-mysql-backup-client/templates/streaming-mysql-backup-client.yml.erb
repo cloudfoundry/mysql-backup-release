@@ -5,12 +5,17 @@ username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
 password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
 cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
-backup_server_port = p('cf-mysql-backup.backup-server.port')
+galera_agent_port = nil
+if p('cf-mysql-backup.backup_from_inactive_node')
+  galera_agent_port = link('mysql').p('galera_agent.port')
+end
 
 %>
 Ips: <%= cluster_ips %>
-BackupServerPort: <%= backup_server_port %>
+BackupServerPort: <%= p('cf-mysql-backup.backup-server.port') %>
 BackupAllMasters: <%= p('cf-mysql-backup.backup-all-masters') %>
+BackupFromInactiveNode: <%= p('cf-mysql-backup.backup_from_inactive_node') %>
+GaleraAgentPort: <%= galera_agent_port %>
 TmpDir: <%= p('cf-mysql-backup.backup-client.tmp_folder') %>
 OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
 SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>

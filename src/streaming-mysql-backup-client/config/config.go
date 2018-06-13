@@ -9,22 +9,24 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/pivotal-cf-experimental/service-config"
-	validator "gopkg.in/validator.v2"
+	"gopkg.in/validator.v2"
 	"io/ioutil"
 	"os"
 )
 
 type Config struct {
-	Ips              []string     `yaml:"Ips" validate:"nonzero"`
-	BackupServerPort int          `yaml:"BackupServerPort"`
-	BackupAllMasters bool         `yaml:"BackupAllMasters"`
-	Credentials      Credentials  `yaml:"Credentials" validate:"nonzero"`
-	Certificates     Certificates `yaml:"Certificates" validate:"nonzero"`
-	TmpDir           string       `yaml:"TmpDir" validate:"nonzero"`
-	OutputDir        string       `yaml:"OutputDir" validate:"nonzero"`
-	SymmetricKey     string       `yaml:"SymmetricKey" validate:"nonzero"`
-	Logger           lager.Logger
-	MetadataFields   map[string]string
+	Ips                    []string     `yaml:"Ips" validate:"nonzero"`
+	BackupServerPort       int          `yaml:"BackupServerPort"`
+	BackupAllMasters       bool         `yaml:"BackupAllMasters"`
+	BackupFromInactiveNode bool         `yaml:"BackupFromInactiveNode"`
+	GaleraAgentPort        int          `yaml:"GaleraAgentPort"`
+	Credentials            Credentials  `yaml:"Credentials" validate:"nonzero"`
+	Certificates           Certificates `yaml:"Certificates" validate:"nonzero"`
+	TmpDir                 string       `yaml:"TmpDir" validate:"nonzero"`
+	OutputDir              string       `yaml:"OutputDir" validate:"nonzero"`
+	SymmetricKey           string       `yaml:"SymmetricKey" validate:"nonzero"`
+	Logger                 lager.Logger
+	MetadataFields         map[string]string
 }
 
 type Credentials struct {

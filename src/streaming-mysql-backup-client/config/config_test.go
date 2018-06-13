@@ -32,6 +32,8 @@ var _ = Describe("ClientConfig", func() {
 				"Ips": ["fakeIp"],
 				"BackupServerPort": 8081,
 				"BackupAllMasters": false,
+				"BackupFromInactiveNode": false,
+				"GaleraAgentPort": null,
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
