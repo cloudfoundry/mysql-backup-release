@@ -7,7 +7,11 @@ password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
 galera_agent_port = nil
 if p('cf-mysql-backup.backup_from_inactive_node')
-  galera_agent_port = link('mysql').p('galera_agent.port')
+  if_link("galera-agent") do |galera_agent_link|
+    galera_agent_port = galera_agent_link.p('port')
+  end.else_if_link("mysql") do |mysql_link|
+    galera_agent_port = mysql_link.p('galera_agent.port')
+  end
 end
 
 %>

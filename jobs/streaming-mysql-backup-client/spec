@@ -16,6 +16,9 @@ consumes:
 - name: mysql
   type: mysql
   optional: true
+- name: galera-agent
+  type: galera-agent
+  optional: true
 
 - name: mysql-backup-tool
   type: mysql-backup-tool
