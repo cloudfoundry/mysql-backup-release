@@ -10,7 +10,7 @@ if p('cf-mysql-backup.backup_from_inactive_node')
   if_link("galera-agent") do |galera_agent_link|
     galera_agent_port = galera_agent_link.p('port')
   end.else_if_link("mysql") do |mysql_link|
-    galera_agent_port = mysql_link.p('galera_agent.port')
+    galera_agent_port = mysql_link.p(['galera_agent.port', 'cf_mysql.mysql.galera_healthcheck.port'])
   end
 end
 
