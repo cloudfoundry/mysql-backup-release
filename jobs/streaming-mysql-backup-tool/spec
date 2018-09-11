@@ -5,8 +5,6 @@ templates:
     streaming-backup_ctl.erb: bin/streaming-backup_ctl
     streaming-mysql-backup-tool.yml.erb: config/streaming-mysql-backup-tool.yml
     simple_collect.sh.erb: bin/simple_collect.sh
-    server-key.pem.erb: certificates/server-key.pem
-    server-cert.pem.erb: certificates/server-cert.pem
 
 packages:
 - streaming-mysql-backup-tool
@@ -35,10 +33,6 @@ properties:
   cf-mysql-backup.disabled:
     description: 'If true, the tool will not be run'
     default: false
-  cf-mysql-backup.tls.server_certificate:
-    description: 'certificate'
-  cf-mysql-backup.tls.server_key:
-    description: 'private key'
   cf-mysql-backup.xtrabackup_path:
     description: 'The path to the bin folder containing the binary. For use with pxc-release, use `/var/vcap/packages/percona-xtrabackup/bin`. The default is for cf-mysql-release'
     default: /var/vcap/packages/xtrabackup/bin

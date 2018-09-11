@@ -6,7 +6,6 @@ templates:
     cleanup-directories.erb: bin/cleanup-directories
     streaming-mysql-backup-client.yml.erb: config/streaming-mysql-backup-client.yml
     pre-start.erb: bin/pre-start
-    ca-certificate.pem.erb: certificates/ca-certificate.pem
 
 packages:
     - xtrabackup
@@ -41,7 +40,3 @@ properties:
     cf-mysql-backup.backup_from_inactive_node:
       description: 'If true, backups will be taken from the galera node with the highest wsrep_local_index'
       default: false
-    cf-mysql-backup.tls.ca_certificate:
-      description: 'CA certificate'
-    cf-mysql-backup.tls.server_name:
-      description: 'Common Name of the server certificate'

@@ -78,21 +78,6 @@ var _ = Describe("Config", func() {
 			err := test_helpers.IsRequiredField(rootConfig, "Credentials.Password")
 			Expect(err).ToNot(HaveOccurred())
 		})
-
-		It("returns an error if Certificates is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates.Cert is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates.Cert")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates.Key is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates.Key")
-			Expect(err).ToNot(HaveOccurred())
-		})
 	})
 
 	Describe("Cmd", func() {

@@ -23,11 +23,6 @@ GaleraAgentPort: <%= galera_agent_port %>
 TmpDir: <%= p('cf-mysql-backup.backup-client.tmp_folder') %>
 OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
 SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>
-Certificates:
-  CACert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/ca-certificate.pem"
-  <% if_p('cf-mysql-backup.tls.server_name') do |server_name| %>
-  ServerName: <%= server_name %>
-  <% end %>
 Credentials:
   Username: <%= username %>
   Password: <%= password %>

@@ -51,6 +51,6 @@ func main() {
 		"port": config.Port,
 	})
 
-	err = http.ListenAndServeTLS(fmt.Sprintf(":%d", config.Port), config.Certificates.Cert, config.Certificates.Key, wrappedMux)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), wrappedMux)
 	logger.Fatal("Streaming backup tool has exited with an error", err)
 }
