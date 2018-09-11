@@ -35,10 +35,6 @@ var _ = Describe("Config", func() {
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
-				},
-				"Certificates":{
-					"Cert": "cert_path",
-					"Key": "key_path",
 				}
 			}`
 		})
@@ -47,7 +43,7 @@ var _ = Describe("Config", func() {
 			err := rootConfig.Validate()
 			Expect(err).NotTo(HaveOccurred())
 		})
-		
+
 	})
 
 	Describe("Cmd", func() {
