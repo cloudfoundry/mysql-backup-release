@@ -5,7 +5,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-config/test_helpers"
 	"streaming-mysql-backup-tool/config"
 )
 
@@ -48,36 +47,7 @@ var _ = Describe("Config", func() {
 			err := rootConfig.Validate()
 			Expect(err).NotTo(HaveOccurred())
 		})
-
-		It("returns an error if pidfile is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "PidFile")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Command is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Command")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Port is zero", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Port")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials.Username is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials.Username")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials.Password is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials.Password")
-			Expect(err).ToNot(HaveOccurred())
-		})
+		
 	})
 
 	Describe("Cmd", func() {
