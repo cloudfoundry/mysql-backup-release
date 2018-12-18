@@ -6,8 +6,13 @@ INNODB_STATUS_DEST="${PT_DEST}/innodbstatus.log"
 PROCESSLIST_DEST="${PT_DEST}/processlist.log"
 VMSTAT_DEST="${PT_DEST}/vmstat.log"
 
+DEFAULTS_FILE=<%= p('cf_mysql.mysql.defaults_file_path') %>
+<% if_link('mysql-backup-user-creds') do %>
+DEFAULTS_FILE=/var/vcap/jobs/streaming-mysql-backup-tool/config/mysql-defaults-file.cnf \
+<% end %>
+
 MYSQL="/var/vcap/packages/mariadb/bin/mysql \
-	--defaults-file=<%= p('cf_mysql.mysql.defaults_file_path') %> \
+	--defaults-file=${DEFAULTS_FILE} \
 	-e "
 
 d=$(date +%F_%T |tr ":" "-")

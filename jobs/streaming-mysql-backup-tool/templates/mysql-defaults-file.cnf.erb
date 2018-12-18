@@ -1,0 +1,6 @@
+<% if_link('mysql-backup-user-creds') do |user| %>
+[client]
+user        = "<%= user.p('mysql_backup_username') %>"
+password    = "<%= user.p('mysql_backup_password') %>"
+socket      = "<%= user.p('mysql_socket')%>"
+<% end %>

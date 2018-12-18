@@ -2,6 +2,7 @@
 name: streaming-mysql-backup-tool
 
 templates:
+    mysql-defaults-file.cnf.erb: config/mysql-defaults-file.cnf
     streaming-backup_ctl.erb: bin/streaming-backup_ctl
     streaming-mysql-backup-tool.yml.erb: config/streaming-mysql-backup-tool.yml
     simple_collect.sh.erb: bin/simple_collect.sh
@@ -17,6 +18,11 @@ provides:
   properties:
   - cf-mysql-backup.endpoint_credentials.username
   - cf-mysql-backup.endpoint_credentials.password
+
+consumes:
+- name: mysql-backup-user-creds
+  type: mysql-backup-user-creds
+  optional: true
 
 properties:
   cf_mysql.mysql.defaults_file_path:
