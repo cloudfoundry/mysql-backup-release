@@ -2,9 +2,11 @@
 
 ## Usage
 
-This is a release which works with [cf-mysql-release](https://github.com/cloudfoundry/cf-mysql-release)
-and [service-backup-release](https://github.com/pivotal-cf-experimental/service-backup-release). P-mysql
-uses all three to perform automated backups of a MySQL cluster.
+MySQL Backup Release provides an api to stream a backup to a backup prepare node.
+The [service-backup-release](https://github.com/pivotal-cf/service-backup-release)
+can be used to send that backup to any supported blobstore.
+
+This release works with [cf-mysql-release](https://github.com/cloudfoundry/cf-mysql-release) or with [pxc-release](https://github.com/cloudfoundry-incubator/pxc-release).
 
 ## Components
 
@@ -19,17 +21,17 @@ streaming-mysql-backup-tool. This tool listens for an HTTP request and will stre
 backup as part of the HTTP response.
 
 The backup will be temporarily stored on the VM with the long-running service
-backup job before being uploaded to its final destination.
+backup job before being uploaded to its final destination (by another service such as the [service-backup-release](https://github.com/pivotal-cf/service-backup-release)).
 
 ## Deploying mysql-backup-release
 
 To prepare, you will need:
 
-* [mysql-backup-release](https://github.com/pivotal-cf-experimental/mysql-backup-release) repository
-* [service-backup-release](https://github.com/pivotal-cf-experimental/service-backup-release)
+* [mysql-backup-release](https://github.com/cloudfoundry-incubator/mysql-backup-release) repository
+* [service-backup-release](https://github.com/pivotal-cf/service-backup-release)
 
 #### Prepare destinations
-See [documentation for service-backup-release](https://docs.pivotal.io/service-backup/) to set up your destinations.
+See [documentation for service-backup-release](https://github.com/pivotal-cf/service-backup-release/blob/master/README.md) to set up your destinations.
 
 #### Create your variables file
 
@@ -37,16 +39,10 @@ Create a file, `backup-variables.yml`
 
 ```yml
 ---
-mysql_backup:
-  symmetric_key: secret-password
-  endpoint_credentials:
-    username: username
-    password: password
-
 # see https://godoc.org/github.com/robfig/cron for syntax
 service_backup_cron_schedule: "@hourly"        
 
-# from the 'destinations' configuration in https://docs.pivotal.io/service-backup/
+# from the 'destinations' configuration in https://github.com/pivotal-cf/service-backup-release
 service_backup_destinations:                   
 - type: s3
   config:
@@ -61,19 +57,36 @@ service_backup_destinations:
 
 Backups uses:
 
-* [mysql-backup-release](https://github.com/pivotal-cf-experimental/mysql-backup-release)
-* [service-backup-release](https://docs.pivotal.io/service-backup/)
+* [mysql-backup-release](https://github.com/cloudfoundry-incubator/mysql-backup-release)
+* [service-backup-release](https://github.com/pivotal-cf/service-backup-release)
 
 #### Deploy
 
-Follow the [new deployment procedure for p-mysql-deployment](https://github.com/cloudfoundry/p-mysql-deployment) and provide:
+##### Deploying with pxc-release
+```
+$ bosh --deployment=pxc deploy pxc-release/pxc-deployment.yml \
+    ...
+    --ops-file=mysql-backup-release/operations/add-backup.yml \
+    --ops-file=mysql-backup-release/operations/pxc.yml \
+    --vars-file=backup-variables.yml
+```
 
-* an extra ops-file: [add-backup.yml](https://github.com/pivotal-cf-experimental/p-mysql-deployment/operations/add-backup.yml)
-* an extra var-file: `backup-variables.yml` from above
+##### Deploying with cf-mysql-release
+```
+$ bosh --deployment=cf-mysql deploy cf-mysql-deployment/cf-mysql-deployment.yml \
+    ...
+    --ops-file=mysql-backup-release/operations/add-backup.yml \
+    --vars-file=backup-variables.yml
+```
 
-## Restoring a cf-mysql cluster from a backup artifact
 
-After deploying mysql-backup-release, you should be generating backup artifacts to your external file store. To restore a database cluster from one of these artifacts, follow the directions below:
+## Restoring a Galera cluster from a backup artifact
+
+After deploying mysql-backup-release, you should be generating backup artifacts
+to your external file store. To restore a database cluster from one of these
+artifacts, follow the directions below.  For the following directions the
+`${data_directory}` will be `/var/vcap/store/pxc-mysql` for pxc-release and
+`/var/vcap/store/mysql` for cf-mysql-release.
 
 1. Redeploy with the following operations file to scale the cluster down to one mysql node:
 
@@ -82,13 +95,8 @@ After deploying mysql-backup-release, you should be generating backup artifacts 
       path: /instance_groups/name=mysql/instances
       value: 1
 
-    - type: replace
-      path: /instance_groups/name=arbitrator/instances
-      value: 0
-
-    - type: replace
-      path: /instance_groups/name=backup-prepare/instances
-      value: 0
+    - type: remove
+      path: /instance_groups/name=arbitrator?
   ```
 
 1. Prepare the first node for restoration
@@ -96,23 +104,24 @@ After deploying mysql-backup-release, you should be generating backup artifacts 
 	1. `sudo su`
 	1. `monit stop all` (will restart once data has been restored)
 	1. `watch monit summary` until all jobs are listed as 'not monitored'
-	1. `rm -rf /var/vcap/store/mysql/*` (delete the existing mysql data which is stored on disk)
+	1. `rm -rf ${data_directory}` (delete the existing mysql data which is stored on disk)
+	1. `mkdir -p ${data_directory}` (recreate the data directory)
 1. Restore the backup
-	1. Move the encrypted backup (named e.g. `mysql-backup.tar.gpg`) to the node (e.g. via `scp`)
+	1. Move the encrypted backup (named e.g. `mysql-backup.tar.gpg`) to the node (e.g. via `bosh scp`)
 	1. Decrypt the backup with your encryption passphrase: `gpg --compress-algo zip --cipher-algo AES256 --output mysql-backup.tar --decrypt mysql-backup.tar.gpg`
-	1. `tar xvf mysql-backup.tar --directory=/var/vcap/store/mysql` (untar the backup artifact into the data directory of MySQL)
-	1. `chown -R vcap:vcap /var/vcap/store/mysql` (MySQL process expects data directory to be owned by a particular user)
+	1. `tar -xvf mysql-backup.tar --directory=${data_directory}` (untar the backup artifact into the data directory of MySQL)
+	1. `chown -R vcap:vcap ${data_directory}` (MySQL process expects data directory to be owned by a particular user)
 	1. `monit start all`
 	1. `watch monit summary` until all jobs are listed as 'running'
 	1. Exit out of the MySQL node
 1. Increase the size of the cluster back to its original
-	1. Re-deploy without the extra `scale-down-cluster.yml` ops-file
+	1. Re-deploy to scale back up to three nodes.
 
 ## Development
 
 - Clone the repo:
   ```bash
-  git clone git@github.com:pivotal-cf-experimental/mysql-backup-release.git
+  git clone git@github.com:cloudfoundry-incubator/mysql-backup-release.git
   ```
 
 - Ensure `direnv` is installed
