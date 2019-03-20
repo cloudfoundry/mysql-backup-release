@@ -99,7 +99,6 @@ var _ = Describe("Main", func() {
 	AfterEach(func() {
 		session.Kill()
 		session.Wait()
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("When the client uses TLS", func() {
