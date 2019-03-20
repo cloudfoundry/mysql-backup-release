@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"strings"
 )
 
 func saveScript(scriptContents string) string {
@@ -238,10 +239,22 @@ var _ = Describe("Main", func() {
 				backupUrl = fmt.Sprintf("http://localhost:%d/backup", rootConfig.Port)
 
 				httpClient = &http.Client{}
-				Eventually(func() error {
-					_, err := httpClient.Get(backupUrl)
-					return err
-				}).Should(MatchError(ContainSubstring("malformed HTTP response")))
+				Eventually(func() bool {
+					res, err := httpClient.Get(backupUrl)
+					if err != nil {
+						if strings.Contains(err.Error(), "malformed HTTP response") {
+							return true
+						}
+					} else {
+						// Compatible fix for golang > 1.12, which no longer return an error.
+						resbody, err := ioutil.ReadAll(res.Body)
+						Expect(err).ToNot(HaveOccurred())
+						if res.StatusCode==400 && strings.Contains(string(resbody), "Client sent an HTTP request to an HTTPS server.") {
+							return true
+						}
+					}
+					return false
+				}).Should(BeTrue())
 			})
 		})
 
