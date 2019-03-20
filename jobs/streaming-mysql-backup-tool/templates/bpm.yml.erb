@@ -7,3 +7,5 @@ processes:
   limits:
     open_files: <%= p('cf-mysql-backup.ulimit') %>
   persistent_disk: true
+  env:
+    PATH: /usr/bin:/bin:<%= p('cf-mysql-backup.xtrabackup_path') %>
