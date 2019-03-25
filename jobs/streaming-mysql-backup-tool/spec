@@ -8,7 +8,6 @@ templates:
   simple_collect.sh.erb: bin/simple_collect.sh
   server-key.pem.erb: certificates/server-key.pem
   server-cert.pem.erb: certificates/server-cert.pem
-
 packages:
 - streaming-mysql-backup-tool
 
