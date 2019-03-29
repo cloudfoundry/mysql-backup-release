@@ -8,6 +8,8 @@ processes:
     open_files: <%= p('cf-mysql-backup.ulimit') %>
   ephemeral_disk: true
   additional_volumes:
+    - path: /var/vcap/jobs/mysql/config
+    - path: /var/vcap/sys/run/mysql
     - path: /var/vcap/sys/run/pxc-mysql
     - path: /var/vcap/store/pxc-mysql
     - path: /var/vcap/store/xtrabackup_tmp
