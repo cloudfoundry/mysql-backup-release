@@ -1,18 +1,18 @@
 ---
 - type: replace
-  path: /releases/name=mysql-backup?
+  path: /releases/-
   value:
     name: mysql-backup
     version: latest
 
 - type: replace
-  path: /releases/name=service-backup?
+  path: /releases/-
   value:
     name: service-backup
     version: latest
 
 - type: replace
-  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool?
+  path: /instance_groups/name=mysql/jobs/-
   value:
     name: streaming-mysql-backup-tool
     release: mysql-backup
@@ -26,7 +26,7 @@
           server_key: ((cf_mysql_backup_cert.private_key))
 
 - type: replace
-  path: /instance_groups/name=backup-prepare?
+  path: /instance_groups/-
   value:
     name: backup-prepare
     instances: 1
@@ -61,25 +61,25 @@
     persistent_disk: 20000
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_endpoint_credentials_username?
+  path: /variables/-
   value:
     name: cf_mysql_backup_endpoint_credentials_username
     type: password
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_endpoint_credentials_password?
+  path: /variables/-
   value:
     name: cf_mysql_backup_endpoint_credentials_password
     type: password
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_symmetric_key?
+  path: /variables/-
   value:
     name: cf_mysql_backup_symmetric_key
     type: password
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_ca?
+  path: /variables/-
   value:
     name: cf_mysql_backup_ca
     type: certificate
@@ -88,7 +88,7 @@
       common_name: generated-backup-ca
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_cert?
+  path: /variables/-
   value:
     name: cf_mysql_backup_cert
     type: certificate

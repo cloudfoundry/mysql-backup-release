@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"crypto/tls"
 	"crypto/x509"
 
-	"streaming-mysql-backup-tool/config"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"streaming-mysql-backup-tool/config"
 	"strings"
 )
 
@@ -55,6 +56,7 @@ var _ = Describe("Main", func() {
 		rootConfig = config.Config{
 			Port:    int(49000 + GinkgoParallelNode()),
 			Command: fmt.Sprintf("echo -n %s", expectedResponseBody),
+			PidFile: tmpFilePath("pid"),
 			Credentials: config.Credentials{
 				Username: "username",
 				Password: "password",
@@ -100,6 +102,8 @@ var _ = Describe("Main", func() {
 	AfterEach(func() {
 		session.Kill()
 		session.Wait()
+		err := os.Remove(rootConfig.PidFile)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Context("When the client uses TLS", func() {
@@ -109,6 +113,27 @@ var _ = Describe("Main", func() {
 				_, err := httpClient.Get(backupUrl)
 				return err
 			}).Should(Succeed())
+		})
+
+		Describe("Writing PID file", func() {
+			var (
+				pidFilePath string
+			)
+			BeforeEach(func() {
+				pidFilePath = rootConfig.PidFile
+			})
+
+			It("Writes its PID file to the location specified ", func() {
+				Expect(pidFilePath).To(BeAnExistingFile())
+			})
+
+			It("Checks whether the PID file content matches the process ID", func() {
+				fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
+				Expect(err).ToNot(HaveOccurred())
+				actualPid, err := strconv.Atoi(string(fileBytes))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(actualPid).To(Equal(command.Process.Pid))
+			})
 		})
 
 		Describe("Initiating a backup", func() {
@@ -249,7 +274,7 @@ var _ = Describe("Main", func() {
 						// Compatible fix for golang > 1.12, which no longer return an error.
 						resbody, err := ioutil.ReadAll(res.Body)
 						Expect(err).ToNot(HaveOccurred())
-						if res.StatusCode==400 && strings.Contains(string(resbody), "Client sent an HTTP request to an HTTPS server.") {
+						if res.StatusCode == 400 && strings.Contains(string(resbody), "Client sent an HTTP request to an HTTPS server.") {
 							return true
 						}
 					}

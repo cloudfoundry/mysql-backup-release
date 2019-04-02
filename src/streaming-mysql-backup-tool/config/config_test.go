@@ -3,11 +3,10 @@ package config_test
 import (
 	"fmt"
 
-	"streaming-mysql-backup-tool/config"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-config/test_helpers"
+	"streaming-mysql-backup-tool/config"
 )
 
 var _ = Describe("Config", func() {
@@ -33,6 +32,7 @@ var _ = Describe("Config", func() {
 			configuration = `{
 				"Command": fakeCommand,
 				"Port": 8081,
+				"PidFile": fakePath,
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
@@ -47,6 +47,11 @@ var _ = Describe("Config", func() {
 		It("does not return error on valid config", func() {
 			err := rootConfig.Validate()
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns an error if pidfile is blank", func() {
+			err := test_helpers.IsRequiredField(rootConfig, "PidFile")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("returns an error if Command is blank", func() {
