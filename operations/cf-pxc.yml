@@ -1,8 +1,0 @@
----
-- type: replace
-  path: /instance_groups/name=database/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/xtrabackup_path?
-  value: /var/vcap/packages/percona-xtrabackup/bin
-
-- type: replace
-  path: /instance_groups/name=database/jobs/name=streaming-mysql-backup-tool/properties/cf_mysql?/mysql/defaults_file_path
-  value: /var/vcap/jobs/pxc-mysql/config/mylogin.cnf
