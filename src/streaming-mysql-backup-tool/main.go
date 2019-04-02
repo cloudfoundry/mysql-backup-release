@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
-
-	"streaming-mysql-backup-tool/api"
-	"streaming-mysql-backup-tool/collector"
-	"streaming-mysql-backup-tool/config"
+	"strconv"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
+	"streaming-mysql-backup-tool/api"
+	"streaming-mysql-backup-tool/collector"
+	"streaming-mysql-backup-tool/config"
 )
 
 func main() {
@@ -38,6 +39,13 @@ func main() {
 	}
 
 	mux.Handle("/backup", backupHandler)
+
+	pidfile, err := os.Create(config.PidFile)
+	if err != nil {
+		logger.Fatal("Failed to create a file", err)
+	}
+
+	ioutil.WriteFile(pidfile.Name(), []byte(strconv.Itoa(os.Getpid())), 0644)
 
 	logger.Info("Starting server with configuration", lager.Data{
 		"port": config.Port,
