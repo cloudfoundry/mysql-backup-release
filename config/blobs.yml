@@ -2,14 +2,6 @@ golang/go1.9.6.linux-amd64.tar.gz:
   size: 118279574
   object_id: e1f16c00-a065-4de1-4337-1cb85a0b45c1
   sha: 012c86a6b555272fe36fb9cdb45082ffc5ea5c7c
-xtrabackup/autoconf-2.65.tar.gz:
-  size: 1738880
-  object_id: 3017587d-0633-434c-a2b2-bc66c486235f
-  sha: ae9e1ab046822007f25c88e1d8f2166e065da8c2
-xtrabackup/automake-1.14.1.tar.gz:
-  size: 2240681
-  object_id: 0a5dbffc-f177-47ee-9371-35500352ab43
-  sha: 0bb1714b78d70cab9907d2013082978a28f48a46
 xtrabackup/boost_1_59_0.tar.gz:
   size: 83709983
   object_id: 20b5dbe0-2ec6-47c6-b4b0-64dd28034842
@@ -22,15 +14,7 @@ xtrabackup/libev-4.22.tar.gz:
   size: 530094
   object_id: 1a0f25ed-4eda-44c9-a095-b88e9586d31c
   sha: b5cc3f6d8d842e23fccc9b27d318ae7fa3d3bf60
-xtrabackup/libtool-2.4.2.tar.gz:
-  size: 2632347
-  object_id: e48007cb-ee4a-4f34-8993-68b0ace3a199
-  sha: 22b71a8b5ce3ad86e1094e7285981cae10e6ff88
 xtrabackup/percona-xtrabackup-2.4.8.tar.gz:
   size: 57965576
   object_id: f75aafbf-71f9-4390-5eb9-e605ca4f161f
   sha: 5cc6b689b9682923211f9aace7ec6c6d22b69346
-xtrabackup/socat-1.7.3.2.tar.gz:
-  size: 611707
-  object_id: 5694aa41-da0b-49e5-4983-82b17806542d
-  sha: 28eca1f8efeadde3f96c1ac89e553c28d736d41d
