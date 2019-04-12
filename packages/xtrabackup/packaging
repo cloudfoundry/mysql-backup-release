@@ -9,105 +9,30 @@ export PATH=$PATH:${BOSH_INSTALL_TARGET}/bin
 
 NPROC="$(nproc)"
 
-# Install Xtrabackup runtime dependencies
+## boost (percona-xtrabackup dependency)
+tar -xf xtrabackup/boost_1_59_0.tar.gz
 
-# socat
-tar xzf xtrabackup/socat-1.7.3.2.tar.gz
-(
-  set -e
-  cd socat-1.7.3.2
-  ./configure --prefix=$PREFIX
-  make -j "$NPROC"
-  make -j "$NPROC" install prefix=$PREFIX
-)
+## libaio
+tar -xf xtrabackup/libaio_*.orig.tar.gz
+make -j "${NPROC}" -C libaio-*/ install
 
-# Install Xtrabackup compilation dependencies
-# autoconf
+## libev (percona-xtrabackup -> xbcloud dependency)
+tar -xf xtrabackup/libev-*.tar.gz
+pushd libev-*/
+  ./configure --prefix=/usr --disable-static
+  make -j "${NPROC}"
+  make -j "${NPROC}" install
+popd
 
-tar xzf xtrabackup/autoconf-2.65.tar.gz
-(
-  set -e
-  cd autoconf-2.65
-  autoconf_dir=$PREFIX/share/autoconf ./configure --prefix=$PREFIX
-  make -j "$NPROC"
-  make -j "$NPROC" install prefix=$PREFIX
-)
-
-# automake
-tar xzf xtrabackup/automake-1.14.1.tar.gz
-(
-  set -e
-  cd automake-1.14.1
-  ./configure --prefix=$PREFIX
-  make -j "$NPROC"
-  make -j "$NPROC" install prefix=$PREFIX
-)
-
-# libtool
-tar xzf xtrabackup/libtool-2.4.2.tar.gz
-(
-  set -e
-  cd libtool-2.4.2
-  ./configure --prefix=$PREFIX
-  make -j "$NPROC"
-  make -j "$NPROC" install prefix=$PREFIX
-)
-
-# libaio
-tar xzf xtrabackup/libaio_0.3.110.orig.tar.gz
-(
-  set -e
-  cd libaio-0.3.110
-  make -j "$NPROC" install
-)
-
-# boost
-tar xzf xtrabackup/boost_1_59_0.tar.gz
-(
-  set -e
-  cd boost_1_59_0
-  ./bootstrap.sh --with-libraries=program_options,system --prefix=${BOSH_INSTALL_TARGET}
-
-  # Go Agent cannot handle more than 10MB output, so trim it
-  set +e
-  ./b2 install > build.out 2> build.err
-  BUILD_EXIT_CODE=$?
-  set -e
-
-  if [ $BUILD_EXIT_CODE -ne 0 ]; then
-      tail -n 1000 build.err
-      exit $BUILD_EXIT_CODE
-  fi
-  tail -n 1000 build.out
-
-  # Copy includes and libraries to standard locations to be consistent
-  # with thedirectory structure in cf-mysql-release
-  cp -R /var/vcap/packages/xtrabackup/lib/* /usr/lib/
-  cp -R /var/vcap/packages/xtrabackup/include/* /usr/include/
-)
-
-tar xzf xtrabackup/libev-4.22.tar.gz
-(
-	set -e
-
-	cd libev-4.22
-
-	./configure --prefix=/usr --disable-static &&
-	make -j "$NPROC"
-	make -j "$NPROC" check
-  make -j "$NPROC" install
-)
-
-tar xzf xtrabackup/percona-xtrabackup-${XTRABACKUP_VERSION}.tar.gz
-(
-  set -e
-  cd percona-xtrabackup-${XTRABACKUP_VERSION}
-
-  cmake \
-      -DBUILD_CONFIG=xtrabackup_release \
-      -DCMAKE_INSTALL_PREFIX=${BOSH_INSTALL_TARGET} \
-      -DWITH_MAN_PAGES=OFF
-  make -j "$NPROC"
-  make -j "$NPROC" install
-)
-
+## percona-xtrabackup
+tar -xf xtrabackup/percona-xtrabackup-*.tar.gz
+pushd percona-xtrabackup-*/
+    cmake \
+        -DBUILD_CONFIG=xtrabackup_release \
+        -DCMAKE_INSTALL_PREFIX=${BOSH_INSTALL_TARGET} \
+        -DINSTALL_MYSQLTESTDIR= \
+        -DWITH_BOOST=../boost_1_59_0/ \
+        -DWITH_MAN_PAGES=OFF
+    make -j "${NPROC}"
+    make -j "${NPROC}" install
+popd
