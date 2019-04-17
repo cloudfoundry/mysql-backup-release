@@ -54,7 +54,7 @@ func main() {
 		tlsconfig.WithIdentityFromFile(config.Certificates.Cert, config.Certificates.Key),
 	).Server()
 	if err != nil {
-		logger.Fatal("Failed to construct mTLS server.", err)
+		logger.Fatal("Failed to construct mTLS server", err)
 	}
 
 	httpServer := &http.Server{

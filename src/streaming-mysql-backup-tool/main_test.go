@@ -16,6 +16,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -70,20 +71,20 @@ var _ = Describe("Main", func() {
 		}
 	})
 
-	AfterEach(func() {
-		err := os.Remove(rootConfig.PidFile)
-		Expect(err).ToNot(HaveOccurred())
-	})
-
 	Context("When the TLS Config can not be built", func() {
+		AfterEach(func() {
+			err := os.Remove(rootConfig.PidFile)
+			Expect(err).ToNot(HaveOccurred())
+		})
 		It("Fails and logs an error", func() {
 			rootConfig.Certificates = config.Certificates{Cert: "Invalid cert designation", Key: "Invalid key designation"}
 			writeConfig(rootConfig)
 			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-			Eventually(func() error {
-				_, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
-				return err
-			}).Should(HaveOccurred())
+			s, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(s).Should(gexec.Exit())
+			Expect(s.ExitCode()).To(Equal(2))
+			Expect(s).To(gbytes.Say("Failed to construct mTLS server"))
 		})
 	})
 
@@ -121,6 +122,8 @@ var _ = Describe("Main", func() {
 		AfterEach(func() {
 			session.Kill()
 			session.Wait()
+			err := os.Remove(rootConfig.PidFile)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("When the client uses TLS", func() {
