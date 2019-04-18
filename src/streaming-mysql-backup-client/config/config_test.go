@@ -115,7 +115,7 @@ var _ = Describe("ClientConfig", func() {
 				It("Returns an error", func() {
 					rootConfig.Certificates.CACert = "invalid_path"
 					err := rootConfig.CreateTlsConfig()
-					Expect(err).To(MatchError("open invalid_path: no such file or directory"))
+					Expect(err).To(MatchError("failed to read file invalid_path: open invalid_path: no such file or directory"))
 				})
 			})
 
@@ -123,7 +123,7 @@ var _ = Describe("ClientConfig", func() {
 				It("Returns an error", func() {
 					rootConfig.Certificates.CACert = "fixtures/InvalidCert.crt"
 					err := rootConfig.CreateTlsConfig()
-					Expect(err).To(MatchError("unable to parse and append ca certificate"))
+					Expect(err).To(MatchError("unable to load CA certificate at fixtures/InvalidCert.crt"))
 				})
 			})
 

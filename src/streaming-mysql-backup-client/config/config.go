@@ -3,15 +3,14 @@ package config
 import (
 	"flag"
 
+	"crypto/tls"
+	"os"
+
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/pivotal-cf-experimental/service-config"
 	"gopkg.in/validator.v2"
-	"io/ioutil"
-	"os"
 )
 
 type Config struct {
@@ -76,21 +75,15 @@ func NewConfig(osArgs []string) (*Config, error) {
 }
 
 func (this *Config) CreateTlsConfig() error {
-	certPool := x509.NewCertPool()
-	dat, err := ioutil.ReadFile(this.Certificates.CACert)
+	newTLSConfig, err := tlsconfig.Build().Client(
+		tlsconfig.WithAuthorityFromFile(this.Certificates.CACert),
+		tlsconfig.WithServerName(this.Certificates.ServerName),
+	)
 	if err != nil {
 		return err
 	}
 
-	if ok := certPool.AppendCertsFromPEM(dat); !ok {
-		err := errors.New("unable to parse and append ca certificate")
-		return err
-	}
-
-	this.Certificates.TlsConfig = &tls.Config{
-		RootCAs:    certPool,
-		ServerName: this.Certificates.ServerName,
-	}
+	this.Certificates.TlsConfig = newTLSConfig
 
 	return nil
 }

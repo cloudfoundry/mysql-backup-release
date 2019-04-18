@@ -42,9 +42,13 @@
   name = "github.com/pivotal-cf-experimental/service-config"
 
 [[constraint]]
-  branch = "fix-large-token"
-  name = "github.com/pivotal-golang/lager"
-
-[[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/validator.v2"
+
+[[constraint]]
+  name = "github.com/imdario/mergo"
+  version = "0.3.7"
