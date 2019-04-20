@@ -7,8 +7,8 @@ import (
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-config"
-	"gopkg.in/validator.v2"
+	service_config "github.com/pivotal-cf-experimental/service-config"
+	validator "gopkg.in/validator.v2"
 )
 
 type Config struct {
@@ -26,8 +26,9 @@ type Credentials struct {
 }
 
 type Certificates struct {
-	Cert string `yaml:"Cert" validate:"nonzero"`
-	Key  string `yaml:"Key" validate:"nonzero"`
+	Cert     string `yaml:"Cert" validate:"nonzero"`
+	Key      string `yaml:"Key" validate:"nonzero"`
+	ClientCA string `yaml:"ClientCA" validate:"nonzero"`
 }
 
 func (c Config) Validate() error {

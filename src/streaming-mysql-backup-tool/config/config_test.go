@@ -40,6 +40,7 @@ var _ = Describe("Config", func() {
 				"Certificates":{
 					"Cert": "cert_path",
 					"Key": "key_path",
+					"ClientCA": "CA_path",
 				}
 			}`
 		})
@@ -91,6 +92,11 @@ var _ = Describe("Config", func() {
 
 		It("returns an error if Certificates.Key is blank", func() {
 			err := test_helpers.IsRequiredField(rootConfig, "Certificates.Key")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns an error if Certificates.ClientCA is blank", func() {
+			err := test_helpers.IsRequiredField(rootConfig, "Certificates.ClientCA")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

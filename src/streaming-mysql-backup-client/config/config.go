@@ -9,8 +9,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/tlsconfig"
-	"github.com/pivotal-cf-experimental/service-config"
-	"gopkg.in/validator.v2"
+	service_config "github.com/pivotal-cf-experimental/service-config"
+	validator "gopkg.in/validator.v2"
 )
 
 type Config struct {
@@ -36,6 +36,8 @@ type Credentials struct {
 type Certificates struct {
 	CACert     string `yaml:"CACert" validate:"nonzero"`
 	ServerName string `yaml:"ServerName"`
+	ClientCert string `yaml:"ClientCert" validate:"nonzero"`
+	ClientKey  string `yaml:"ClientKey" validate:"nonzero"`
 	TlsConfig  *tls.Config
 }
 

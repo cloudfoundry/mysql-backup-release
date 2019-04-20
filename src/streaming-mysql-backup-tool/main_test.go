@@ -66,7 +66,7 @@ var _ = Describe("Main", func() {
 				Cert: "fixtures/localhost.crt",
 				Key:  "fixtures/localhost.key",
 				// TODO: add this to config.Certificates type
-				// ClientCA: "fixtures/client-ca-certificate.pem"
+				// ClientCA: "fixtures/client-ca.pem"
 			},
 		}
 	})

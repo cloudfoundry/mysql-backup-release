@@ -3,10 +3,11 @@ package config_test
 import (
 	"fmt"
 
+	configPkg "streaming-mysql-backup-client/config"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-config/test_helpers"
-	configPkg "streaming-mysql-backup-client/config"
 )
 
 var _ = Describe("ClientConfig", func() {
@@ -39,6 +40,8 @@ var _ = Describe("ClientConfig", func() {
 					"Password": "fake_password",
 				},
 				"Certificates": {
+					"ClientCert": "fakeClientCert",
+					"ClientKey": "fakeClientKey",
 					"CACert": "fixtures/CertAuth.crt",
 				},
 				"TmpDir": "fakeTmp",
@@ -79,6 +82,15 @@ var _ = Describe("ClientConfig", func() {
 			err := test_helpers.IsRequiredField(rootConfig, "Certificates")
 			Expect(err).ToNot(HaveOccurred())
 		})
+		It("returns an error if Certificates.Cert is blank", func() {
+			err := test_helpers.IsRequiredField(rootConfig, "Certificates.ClientCert")
+			Expect(err).ToNot(HaveOccurred())
+		})
+		It("returns an error if Certificates.Key is blank", func() {
+			err := test_helpers.IsRequiredField(rootConfig, "Certificates.ClientKey")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 	})
 
 	Describe("TlsConfig", func() {
