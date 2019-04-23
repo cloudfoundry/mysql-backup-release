@@ -6,8 +6,8 @@ templates:
     cleanup-directories.erb: bin/cleanup-directories
     streaming-mysql-backup-client.yml.erb: config/streaming-mysql-backup-client.yml
     pre-start.erb: bin/pre-start
-    client_cert.pem.erb: certificates/client_cert.pem
-    client_key.pem.erb: certificates/client_key.pem
+    client-cert.pem.erb: certificates/client-cert.pem
+    client-key.pem.erb: certificates/client-key.pem
     ca-certificate.pem.erb: certificates/ca-certificate.pem
 
 packages:
