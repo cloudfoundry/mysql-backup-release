@@ -23,6 +23,8 @@ type buildResult struct {
 }
 
 func TestE2E(t *testing.T) {
+	t.Parallel()
+
 	ca, err := certtest.BuildCA("tlsconfig")
 	if err != nil {
 		t.Fatalf("failed to build CA: %v", err)
@@ -50,8 +52,6 @@ func TestE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get tls client certificate: %v", err)
 	}
-
-	t.Parallel()
 
 	// Typically we would share a base configuration but here we're pretending
 	// to be two different services.
@@ -127,6 +127,88 @@ func TestE2EFromFile(t *testing.T) {
 	testClientServerTLSConnection(t, clientConf, serverConf)
 }
 
+func TestServerName(t *testing.T) {
+	t.Parallel()
+
+	ca, err := certtest.BuildCA("tlsconfig")
+	if err != nil {
+		t.Fatalf("failed to build CA: %v", err)
+	}
+
+	pool, err := ca.CertPool()
+	if err != nil {
+		t.Fatalf("failed to get CA cert pool: %v", err)
+	}
+
+	serverName := "oddservername"
+	serverCrt, err := ca.BuildSignedCertificate("server", certtest.WithDomains(serverName))
+	if err != nil {
+		t.Fatalf("failed to make server certificate: %v", err)
+	}
+	serverTLSCrt, err := serverCrt.TLSCertificate()
+	if err != nil {
+		t.Fatalf("failed to get tls server certificate: %v", err)
+	}
+
+	clientCrt, err := ca.BuildSignedCertificate("client")
+	if err != nil {
+		t.Fatalf("failed to make client certificate: %v", err)
+	}
+	clientTLSCrt, err := clientCrt.TLSCertificate()
+	if err != nil {
+		t.Fatalf("failed to get tls client certificate: %v", err)
+	}
+
+	// Typically we would share a base configuration but here we're pretending
+	// to be two different services.
+	serverConf, err := tlsconfig.Build(
+		tlsconfig.WithIdentity(serverTLSCrt),
+	).Server(
+		tlsconfig.WithClientAuthentication(pool),
+	)
+	if err != nil {
+		t.Fatalf("failed to build server config: %v", err)
+	}
+
+	goodClientConf, err := tlsconfig.Build(
+		tlsconfig.WithIdentity(clientTLSCrt),
+	).Client(
+		tlsconfig.WithAuthority(pool),
+		tlsconfig.WithServerName(serverName),
+	)
+	if err != nil {
+		t.Fatalf("failed to build client config: %v", err)
+	}
+
+	// works with correct server name
+	testClientServerTLSConnection(t, goodClientConf, serverConf)
+
+	// does not work without server name
+	badClientConf, err := tlsconfig.Build(
+		tlsconfig.WithIdentity(clientTLSCrt),
+	).Client(
+		tlsconfig.WithAuthority(pool),
+		tlsconfig.WithServerName("badServerName"),
+	)
+	if err != nil {
+		t.Fatalf("failed to build client config: %v", err)
+	}
+	s := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "hello, world!")
+	}))
+	s.TLS = serverConf
+	s.StartTLS()
+	defer s.Close()
+
+	transport := &http.Transport{TLSClientConfig: badClientConf}
+	client := &http.Client{Transport: transport}
+
+	_, err = client.Get(s.URL)
+	if err == nil {
+		t.Fatalf("expected to fail with invalid server name")
+	}
+}
+
 func TestInternalDefaults(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 	t.Parallel()
@@ -186,6 +268,8 @@ func TestInternalDefaults(t *testing.T) {
 }
 
 func TestLoadKeypairFails(t *testing.T) {
+	t.Parallel()
+
 	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("failed to create temp directory: %v", err)
@@ -201,8 +285,6 @@ func TestLoadKeypairFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to generate certificate keypair: %v", err)
 	}
-
-	t.Parallel()
 
 	// generate file invalid for use as cert or key
 	invalidFile, err := ioutil.TempFile(tempDir, "invalid")

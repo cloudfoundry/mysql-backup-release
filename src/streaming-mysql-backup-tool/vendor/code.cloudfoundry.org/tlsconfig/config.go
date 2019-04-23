@@ -180,3 +180,12 @@ func WithAuthorityFromFile(caPath string) ClientOption {
 		return nil
 	}
 }
+
+// WithServerName makes the client verify that the server name in the
+// certificate presented by the server.
+func WithServerName(name string) ClientOption {
+	return func(c *tls.Config) error {
+		c.ServerName = name
+		return nil
+	}
+}
