@@ -52,7 +52,9 @@ func main() {
 
 	tlsConfig, err := tlsconfig.Build(
 		tlsconfig.WithIdentityFromFile(config.Certificates.Cert, config.Certificates.Key),
-	).Server()
+	).Server(
+		tlsconfig.WithClientAuthenticationFromFile(config.Certificates.ClientCA),
+	)
 	if err != nil {
 		logger.Fatal("Failed to construct mTLS server", err)
 	}
@@ -62,7 +64,6 @@ func main() {
 		Handler:   wrappedMux,
 		TLSConfig: tlsConfig,
 	}
-	err = httpServer.ListenAndServeTLS(config.Certificates.Cert, config.Certificates.Key)
-
+	err = httpServer.ListenAndServeTLS("", "")
 	logger.Fatal("Streaming backup tool has exited with an error", err)
 }

@@ -23,11 +23,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d55ad38b832eccf975b872c1a37bc1fc253d4e3b190c750d1bab06cc8b5b85ac"
+  digest = "1:40d5dc9e1fdceb1640f25f9cc14a603de101ec322977b234f7657d7fc2aec833"
   name = "code.cloudfoundry.org/tlsconfig"
   packages = ["."]
   pruneopts = ""
-  revision = "07274a700fb4c760fba249bb06f682a8c08ef202"
+  revision = "eb9396db5a718d9d9a3c5ee0af6baafa56e5e76b"
 
 [[projects]]
   branch = "master"

@@ -1,8 +1,6 @@
 package main_test
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"code.cloudfoundry.org/tlsconfig"
 
 	"streaming-mysql-backup-tool/config"
 
@@ -63,10 +63,9 @@ var _ = Describe("Main", func() {
 				Password: "password",
 			},
 			Certificates: config.Certificates{
-				Cert: "fixtures/localhost.crt",
-				Key:  "fixtures/localhost.key",
-				// TODO: add this to config.Certificates type
-				// ClientCA: "fixtures/client-ca.pem"
+				Cert:     "fixtures/localhost.crt",
+				Key:      "fixtures/localhost.key",
+				ClientCA: "fixtures/clientCA.crt",
 			},
 		}
 	})
@@ -88,7 +87,74 @@ var _ = Describe("Main", func() {
 		})
 	})
 
-	Context("When TLS options are configured correctly", func() {
+	Context("When the client does not provide key and cert for mTLS", func() {
+		JustBeforeEach(func() {
+			// In case individual tests want to modify their rootConfig variable after BeforeEach
+			writeConfig(rootConfig)
+
+			backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+		})
+		AfterEach(func() {
+			session.Kill()
+			session.Wait()
+			err := os.Remove(rootConfig.PidFile)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("When the client does not provide a key and cert for mTLS", func() {
+			JustBeforeEach(func() {
+				TLSClientConfig, err := tlsconfig.Build().Client(
+					tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+					tlsconfig.WithServerName("localhost"),
+				)
+
+				httpClient = &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: TLSClientConfig,
+					},
+				}
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			It("Throws a bad certificate error", func() {
+				Eventually(func() error {
+					_, err := httpClient.Get(backupUrl)
+					return err
+				}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+			})
+		})
+
+		Context("When the client provides a key or cert from an invalid authority", func() {
+			JustBeforeEach(func() {
+				TLSClientConfig, err := tlsconfig.Build(
+					tlsconfig.WithIdentityFromFile("fixtures/localhost.crt", "fixtures/localhost.key"),
+				).Client(
+					tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+					tlsconfig.WithServerName("localhost"),
+				)
+
+				httpClient = &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: TLSClientConfig,
+					},
+				}
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			It("Throws a bad certificate error", func() {
+				Eventually(func() error {
+					_, err := httpClient.Get(backupUrl)
+					return err
+				}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+			})
+		})
+	})
+
+	Context("When mTLS options are configured correctly", func() {
 		JustBeforeEach(func() {
 			// In case individual tests want to modify their rootConfig variable after BeforeEach
 			writeConfig(rootConfig)
@@ -100,19 +166,16 @@ var _ = Describe("Main", func() {
 			request, err = http.NewRequest("GET", backupUrl, nil)
 			request.SetBasicAuth("username", "password")
 
-			certPool := x509.NewCertPool()
-			dat, err := ioutil.ReadFile("fixtures/CertAuth.crt")
-			Expect(err).NotTo(HaveOccurred())
-
-			if ok := certPool.AppendCertsFromPEM(dat); !ok {
-				Fail("not ok")
-			}
+			mTLSClientConfig, err := tlsconfig.Build(
+				tlsconfig.WithIdentityFromFile("fixtures/client.crt", "fixtures/client.key"),
+			).Client(
+				tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+				tlsconfig.WithServerName("localhost"),
+			)
 
 			httpClient = &http.Client{
 				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						RootCAs: certPool,
-					},
+					TLSClientConfig: mTLSClientConfig,
 				},
 			}
 			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
