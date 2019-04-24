@@ -14,12 +14,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gbytes"
 	"streaming-mysql-backup-client/clock/fakes"
 	"streaming-mysql-backup-client/config"
 	"streaming-mysql-backup-client/download"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 
 	"code.cloudfoundry.org/lager/lagertest"
 )
@@ -80,11 +81,14 @@ var _ = Describe("Downloading the backups", func() {
 			},
 			Certificates: config.Certificates{
 				CACert:     "fixtures/CertAuth.crt",
+				ClientCert: "fixtures/streaming-mysql-backup-tool.crt",
+				ClientKey:  "fixtures/streaming-mysql-backup-tool.key",
 				ServerName: "streaming-mysql-backup-tool",
 			},
 		}
 
-		rootConfig.CreateTlsConfig()
+		err := rootConfig.CreateTlsConfig()
+		Expect(err).ToNot(HaveOccurred())
 
 		//this 'happy-path' server handler can be overridden in later BeforeEach blocks
 		handlerFunc = func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +108,6 @@ var _ = Describe("Downloading the backups", func() {
 			writeTrailer(w, downloader.TrailerKey(), trailerError)
 		}
 
-		var err error
 		certificate, err = tls.LoadX509KeyPair("fixtures/streaming-mysql-backup-tool.crt", "fixtures/streaming-mysql-backup-tool.key")
 		Expect(err).NotTo(HaveOccurred())
 	})

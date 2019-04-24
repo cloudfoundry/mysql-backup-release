@@ -40,8 +40,8 @@ var _ = Describe("ClientConfig", func() {
 					"Password": "fake_password",
 				},
 				"Certificates": {
-					"ClientCert": "fakeClientCert",
-					"ClientKey": "fakeClientKey",
+					"ClientCert": "fixtures/client.crt",
+					"ClientKey": "fixtures/client.key",
 					"CACert": "fixtures/CertAuth.crt",
 				},
 				"TmpDir": "fakeTmp",
@@ -93,33 +93,25 @@ var _ = Describe("ClientConfig", func() {
 
 	})
 
-	Describe("TlsConfig", func() {
-		BeforeEach(func() {
-			configuration = `{
-				"Certificates": {
-					"CACert": "fixtures/CertAuth.crt",
-					"ServerName": "myServerName",
-				}
-			}`
-		})
-
-		It("includes the CACert as a string", func() {
-			Expect(rootConfig.Certificates.TlsConfig.RootCAs.Subjects()[0]).To(ContainSubstring("CertAuth"))
-		})
-
-		It("includes the server name", func() {
-			Expect(rootConfig.Certificates.TlsConfig.ServerName).To(Equal("myServerName"))
-		})
-	})
-
 	Describe("CreateTlsConfig", func() {
 		BeforeEach(func() {
 			configuration = `{
 				"Certificates": {
 					"CACert": "fixtures/CertAuth.crt",
-					"ServerName": "myServerName",
+					"ClientCert": "fixtures/client.crt",
+					"ClientKey": "fixtures/client.key",
+					"ServerName": "myServerName"
 				}
 			}`
+		})
+
+		Context("When certificates are valid", func() {
+			It("Creates a TlsConfig", func() {
+				Expect(rootConfig.CreateTlsConfig()).To(Succeed())
+				Expect(rootConfig.Certificates.TlsConfig.RootCAs).NotTo(BeNil())
+				Expect(rootConfig.Certificates.TlsConfig.ServerName).To(Equal("myServerName"))
+				Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(1))
+			})
 		})
 
 		Context("When certificates are invalid", func() {
@@ -138,7 +130,6 @@ var _ = Describe("ClientConfig", func() {
 					Expect(err).To(MatchError("unable to load CA certificate at fixtures/InvalidCert.crt"))
 				})
 			})
-
 		})
 	})
 })

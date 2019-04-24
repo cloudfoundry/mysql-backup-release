@@ -51,6 +51,7 @@ func main() {
 	})
 
 	tlsConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
 		tlsconfig.WithIdentityFromFile(config.Certificates.Cert, config.Certificates.Key),
 	).Server(
 		tlsconfig.WithClientAuthenticationFromFile(config.Certificates.ClientCA),

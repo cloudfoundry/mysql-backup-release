@@ -77,7 +77,10 @@ func NewConfig(osArgs []string) (*Config, error) {
 }
 
 func (this *Config) CreateTlsConfig() error {
-	newTLSConfig, err := tlsconfig.Build().Client(
+	newTLSConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(this.Certificates.ClientCert, this.Certificates.ClientKey),
+	).Client(
 		tlsconfig.WithAuthorityFromFile(this.Certificates.CACert),
 		tlsconfig.WithServerName(this.Certificates.ServerName),
 	)

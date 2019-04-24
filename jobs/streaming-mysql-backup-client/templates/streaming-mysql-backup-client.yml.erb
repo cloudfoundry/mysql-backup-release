@@ -25,6 +25,8 @@ OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
 SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>
 Certificates:
   CACert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/ca-certificate.pem"
+  ClientCert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/client-cert.pem"
+  ClientKey: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/client-key.pem"
   <% if_p('cf-mysql-backup.tls.server_name') do |server_name| %>
   ServerName: <%= server_name %>
   <% end %>
