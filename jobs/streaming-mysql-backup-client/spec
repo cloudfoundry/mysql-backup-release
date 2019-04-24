@@ -43,7 +43,7 @@ properties:
     cf-mysql-backup.backup_from_inactive_node:
       description: 'If true, backups will be taken from the galera node with the highest wsrep_local_index'
       default: false
-    cf-mysql-backup.tls.client_cert:
+    cf-mysql-backup.tls.client_certificate:
       description: 'client certificate'
     cf-mysql-backup.tls.client_key:
       description: 'client private key'
