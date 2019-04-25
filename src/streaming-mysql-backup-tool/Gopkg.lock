@@ -25,7 +25,10 @@
   branch = "master"
   digest = "1:40d5dc9e1fdceb1640f25f9cc14a603de101ec322977b234f7657d7fc2aec833"
   name = "code.cloudfoundry.org/tlsconfig"
-  packages = ["."]
+  packages = [
+    ".",
+    "certtest",
+  ]
   pruneopts = ""
   revision = "eb9396db5a718d9d9a3c5ee0af6baafa56e5e76b"
 
@@ -116,6 +119,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:ea92eae2f65a7b4fa3c64e57d2e834cf613b13ae61febe0e174bde9bba230151"
+  name = "github.com/square/certstrap"
+  packages = ["pkix"]
+  pruneopts = ""
+  revision = "350df15b3713d535548735ea754726228b00c742"
+
+[[projects]]
+  branch = "master"
   digest = "1:447831205e1c85dbf1e6f97cb8ca54931452c6aff79c630ea091ecbbdc2e921e"
   name = "golang.org/x/net"
   packages = [
@@ -184,6 +195,7 @@
     "code.cloudfoundry.org/lager",
     "code.cloudfoundry.org/lager/lagertest",
     "code.cloudfoundry.org/tlsconfig",
+    "code.cloudfoundry.org/tlsconfig/certtest",
     "github.com/cloudfoundry-incubator/switchboard/api/middleware",
     "github.com/nu7hatch/gouuid",
     "github.com/onsi/ginkgo",

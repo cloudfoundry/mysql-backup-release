@@ -18,7 +18,10 @@
   branch = "master"
   digest = "1:6cec70412dfc454fdfc2b86ad59a6c97d7d911b3e40ced0b5a3de08b238b4d89"
   name = "code.cloudfoundry.org/tlsconfig"
-  packages = ["."]
+  packages = [
+    ".",
+    "certtest",
+  ]
   pruneopts = ""
   revision = "7aa79914ac3824313b61f61eb1b5b538a10d4cdd"
 
@@ -111,6 +114,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:ea92eae2f65a7b4fa3c64e57d2e834cf613b13ae61febe0e174bde9bba230151"
+  name = "github.com/square/certstrap"
+  packages = ["pkix"]
+  pruneopts = ""
+  revision = "350df15b3713d535548735ea754726228b00c742"
+
+[[projects]]
+  branch = "master"
   digest = "1:c3415eeb330bf30a2d8181e516ec79804c198f3d171ab9c9364f29dbe76c05d9"
   name = "golang.org/x/crypto"
   packages = [
@@ -195,8 +206,8 @@
     "code.cloudfoundry.org/lager/lagerflags",
     "code.cloudfoundry.org/lager/lagertest",
     "code.cloudfoundry.org/tlsconfig",
+    "code.cloudfoundry.org/tlsconfig/certtest",
     "github.com/dustin/go-humanize",
-    "github.com/imdario/mergo",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/onsi/gomega/gbytes",

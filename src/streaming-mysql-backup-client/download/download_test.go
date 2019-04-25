@@ -1,14 +1,15 @@
 package download_test
 
 import (
+	"code.cloudfoundry.org/tlsconfig/certtest"
 	"crypto/subtle"
 	"crypto/tls"
-	"crypto/x509"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -56,7 +57,16 @@ var _ = Describe("Downloading the backups", func() {
 		rootConfig           *config.Config
 		bufWriter            bufferWriter
 		certificate          tls.Certificate
+		backupCA             *certtest.Authority
+		otherCA              *certtest.Authority
+		tmpDir               string
 	)
+
+	AfterEach(func() {
+		if tmpDir != "" {
+			os.RemoveAll(tmpDir)
+		}
+	})
 
 	BeforeEach(func() {
 		logger = *lagertest.NewTestLogger("backup-client-test")
@@ -69,6 +79,29 @@ var _ = Describe("Downloading the backups", func() {
 			Buffer: NewBuffer(),
 		}
 
+		var err error
+		backupCA, err = certtest.BuildCA("backupCA")
+		Expect(err).ToNot(HaveOccurred())
+		backupCABytes, err := backupCA.CertificatePEM()
+		Expect(err).ToNot(HaveOccurred())
+
+		backupCert, err := backupCA.BuildSignedCertificate("backupCert",
+			certtest.WithDomains("expected-server-name"))
+		Expect(err).ToNot(HaveOccurred())
+
+		backupCertPEM, privateBackupKey, err := backupCert.CertificatePEMAndPrivateKey()
+		Expect(err).ToNot(HaveOccurred())
+
+		tmpDir, err = ioutil.TempDir("", "backup-download-tests")
+		Expect(err).ToNot(HaveOccurred())
+
+		backupCAPath := filepath.Join(tmpDir, "backupCA.crt")
+		Expect(ioutil.WriteFile(backupCAPath, backupCABytes, 0666)).To(Succeed())
+		backupCertPath := filepath.Join(tmpDir, "backup.crt")
+		Expect(ioutil.WriteFile(backupCertPath, backupCertPEM, 0666)).To(Succeed())
+		backupKeyPath := filepath.Join(tmpDir, "backup.key")
+		Expect(ioutil.WriteFile(backupKeyPath, privateBackupKey, 0666)).To(Succeed())
+
 		expectedUsername = "username"
 		expectedPassword = "password"
 		trailerError = ""
@@ -80,14 +113,14 @@ var _ = Describe("Downloading the backups", func() {
 				Password: expectedPassword,
 			},
 			Certificates: config.Certificates{
-				CACert:     "fixtures/CertAuth.crt",
-				ClientCert: "fixtures/streaming-mysql-backup-tool.crt",
-				ClientKey:  "fixtures/streaming-mysql-backup-tool.key",
-				ServerName: "streaming-mysql-backup-tool",
+				CACert:     backupCAPath,
+				ClientCert: backupCertPath,
+				ClientKey:  backupKeyPath,
+				ServerName: "expected-server-name",
 			},
 		}
 
-		err := rootConfig.CreateTlsConfig()
+		err = rootConfig.CreateTlsConfig()
 		Expect(err).ToNot(HaveOccurred())
 
 		//this 'happy-path' server handler can be overridden in later BeforeEach blocks
@@ -108,20 +141,16 @@ var _ = Describe("Downloading the backups", func() {
 			writeTrailer(w, downloader.TrailerKey(), trailerError)
 		}
 
-		certificate, err = tls.LoadX509KeyPair("fixtures/streaming-mysql-backup-tool.crt", "fixtures/streaming-mysql-backup-tool.key")
+		certificate, err = backupCert.TLSCertificate()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
 		handler := http.HandlerFunc(handlerFunc)
 		test_server = httptest.NewUnstartedServer(handler)
-		certPool := x509.NewCertPool()
-		certAuthContents, err := ioutil.ReadFile("fixtures/CertAuth.crt")
-		Expect(err).NotTo(HaveOccurred())
 
-		if ok := certPool.AppendCertsFromPEM(certAuthContents); !ok {
-			Fail("not ok")
-		}
+		certPool, err := backupCA.CertPool()
+		Expect(err).ToNot(HaveOccurred())
 
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{certificate},
@@ -155,7 +184,7 @@ var _ = Describe("Downloading the backups", func() {
 	})
 
 	Context("when the certificate is signed by a trusted CA", func() {
-		Context("and the CN is streaming-mysql-backup-tool", func() {
+		Context("and the CN is the expected server name", func() {
 			It("downloads a backup and logs", func() {
 				expectedResponseBody = []byte("some response body")
 
@@ -167,24 +196,39 @@ var _ = Describe("Downloading the backups", func() {
 			})
 		})
 
-		Context("and the CN is not streaming-mysql-backup-tool", func() {
+		Context("and the CN is not the expected server name", func() {
 			BeforeEach(func() {
 				var err error
-				certificate, err = tls.LoadX509KeyPair("fixtures/thebomb.com.crt", "fixtures/thebomb.com.key")
+				otherCA, err = certtest.BuildCA("other")
+				Expect(err).ToNot(HaveOccurred())
+
+				otherCert, err := otherCA.BuildSignedCertificate("otherCert",
+					certtest.WithDomains("other"))
+				Expect(err).ToNot(HaveOccurred())
+				certificate, err = otherCert.TLSCertificate()
 				Expect(err).NotTo(HaveOccurred())
+
 			})
 
 			It("returns an error with a stack", func() {
 				err := downloader.DownloadBackup(test_server.URL, bufWriter)
 				Expect(reflect.TypeOf(err).String()).To(Equal("*errors.withStack"))
-				Expect(err).To(MatchError(ContainSubstring("certificate is valid for thebomb.com, not streaming-mysql-backup-tool")))
+				Expect(err).To(MatchError(ContainSubstring("certificate is valid for other, not expected-server-name")))
 			})
 		})
 	})
 
 	Context("when the certificate is signed by an unknown CA", func() {
 		BeforeEach(func() {
-			rootConfig.Certificates.CACert = "fixtures/BadCertAuth.crt"
+			var err error
+			otherCA, err = certtest.BuildCA("other")
+			Expect(err).ToNot(HaveOccurred())
+			otherCABytes, err := otherCA.CertificatePEM()
+			Expect(err).ToNot(HaveOccurred())
+			otherCAPath := filepath.Join(tmpDir, "otherCA.crt")
+			Expect(ioutil.WriteFile(otherCAPath, otherCABytes, 0666)).To(Succeed())
+
+			rootConfig.Certificates.CACert = otherCAPath
 			rootConfig.CreateTlsConfig()
 		})
 

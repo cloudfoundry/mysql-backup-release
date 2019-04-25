@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/tlsconfig"
+	"code.cloudfoundry.org/tlsconfig/certtest"
 
 	"streaming-mysql-backup-tool/config"
 
@@ -51,9 +52,48 @@ var _ = Describe("Main", func() {
 		httpClient           *http.Client
 		rootConfig           config.Config
 		expectedResponseBody = "my_output"
+
+		tmpDir     string
+		clientCA   *certtest.Authority
+		clientCert *certtest.Certificate
+		serverCA   *certtest.Authority
+		serverCert *certtest.Certificate
 	)
 
+	AfterEach(func() {
+		if tmpDir != "" {
+			os.RemoveAll(tmpDir)
+		}
+	})
+
 	BeforeEach(func() {
+		var err error
+		clientCA, err = certtest.BuildCA("clientCA")
+		Expect(err).ToNot(HaveOccurred())
+		clientCABytes, err := clientCA.CertificatePEM()
+		Expect(err).ToNot(HaveOccurred())
+
+		serverCA, err = certtest.BuildCA("serverCA")
+		Expect(err).ToNot(HaveOccurred())
+
+		clientCert, err = clientCA.BuildSignedCertificate("clientCert")
+		Expect(err).ToNot(HaveOccurred())
+
+		serverCert, err = serverCA.BuildSignedCertificate("serverCert")
+		Expect(err).ToNot(HaveOccurred())
+		serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
+		Expect(err).ToNot(HaveOccurred())
+
+		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
+		Expect(err).ToNot(HaveOccurred())
+
+		clientCAPath := filepath.Join(tmpDir, "clientCA.crt")
+		Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
+		serverCertPath := filepath.Join(tmpDir, "server.crt")
+		Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
+		serverKeyPath := filepath.Join(tmpDir, "server.key")
+		Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
+
 		rootConfig = config.Config{
 			Port:    int(49000 + GinkgoParallelNode()),
 			Command: fmt.Sprintf("echo -n %s", expectedResponseBody),
@@ -63,9 +103,9 @@ var _ = Describe("Main", func() {
 				Password: "password",
 			},
 			Certificates: config.Certificates{
-				Cert:     "fixtures/localhost.crt",
-				Key:      "fixtures/localhost.key",
-				ClientCA: "fixtures/clientCA.crt",
+				Cert:     serverCertPath,
+				Key:      serverKeyPath,
+				ClientCA: clientCAPath,
 			},
 		}
 	})
@@ -103,8 +143,11 @@ var _ = Describe("Main", func() {
 
 		Context("When the client does not provide a key and cert for mTLS", func() {
 			JustBeforeEach(func() {
+				serverCertPool, err := serverCA.CertPool()
+				Expect(err).ToNot(HaveOccurred())
+
 				TLSClientConfig, err := tlsconfig.Build().Client(
-					tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+					tlsconfig.WithAuthority(serverCertPool),
 					tlsconfig.WithServerName("localhost"),
 				)
 
@@ -128,10 +171,16 @@ var _ = Describe("Main", func() {
 
 		Context("When the client provides a key or cert from an invalid authority", func() {
 			JustBeforeEach(func() {
+				incorrectServerIdentity, err := serverCert.TLSCertificate()
+				Expect(err).ToNot(HaveOccurred())
+
+				serverCertPool, err := serverCA.CertPool()
+				Expect(err).ToNot(HaveOccurred())
+
 				TLSClientConfig, err := tlsconfig.Build(
-					tlsconfig.WithIdentityFromFile("fixtures/localhost.crt", "fixtures/localhost.key"),
+					tlsconfig.WithIdentity(incorrectServerIdentity), //This is an intentionally invalid identity for the server
 				).Client(
-					tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+					tlsconfig.WithAuthority(serverCertPool),
 					tlsconfig.WithServerName("localhost"),
 				)
 
@@ -166,10 +215,16 @@ var _ = Describe("Main", func() {
 			request, err = http.NewRequest("GET", backupUrl, nil)
 			request.SetBasicAuth("username", "password")
 
+			clientIdentity, err := clientCert.TLSCertificate()
+			Expect(err).ToNot(HaveOccurred())
+
+			serverCertPool, err := serverCA.CertPool()
+			Expect(err).ToNot(HaveOccurred())
+
 			mTLSClientConfig, err := tlsconfig.Build(
-				tlsconfig.WithIdentityFromFile("fixtures/client.crt", "fixtures/client.key"),
+				tlsconfig.WithIdentity(clientIdentity),
 			).Client(
-				tlsconfig.WithAuthorityFromFile("fixtures/CertAuth.crt"),
+				tlsconfig.WithAuthority(serverCertPool),
 				tlsconfig.WithServerName("localhost"),
 			)
 

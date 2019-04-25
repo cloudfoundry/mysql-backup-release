@@ -1,7 +1,11 @@
 package config_test
 
 import (
+	"code.cloudfoundry.org/tlsconfig/certtest"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	configPkg "streaming-mysql-backup-client/config"
 
@@ -14,7 +18,40 @@ var _ = Describe("ClientConfig", func() {
 	var (
 		rootConfig    *configPkg.Config
 		configuration string
+
+		caPath         string
+		certPath       string
+		privateKeyPath string
+		tmpDir         string
 	)
+
+	AfterEach(func() {
+		if tmpDir != "" {
+			os.RemoveAll(tmpDir)
+		}
+	})
+
+	BeforeEach(func() {
+		ca, err := certtest.BuildCA("serverCA")
+		Expect(err).ToNot(HaveOccurred())
+		caBytes, err := ca.CertificatePEM()
+		Expect(err).ToNot(HaveOccurred())
+
+		certificate, err := ca.BuildSignedCertificate("serverCert")
+		Expect(err).ToNot(HaveOccurred())
+		certPEM, privateKey, err := certificate.CertificatePEMAndPrivateKey()
+		Expect(err).ToNot(HaveOccurred())
+
+		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
+		Expect(err).ToNot(HaveOccurred())
+
+		caPath = filepath.Join(tmpDir, "ca.crt")
+		Expect(ioutil.WriteFile(caPath, caBytes, 0666)).To(Succeed())
+		certPath = filepath.Join(tmpDir, "cert.crt")
+		Expect(ioutil.WriteFile(certPath, certPEM, 0666)).To(Succeed())
+		privateKeyPath = filepath.Join(tmpDir, "key.key")
+		Expect(ioutil.WriteFile(privateKeyPath, privateKey, 0666)).To(Succeed())
+	})
 
 	JustBeforeEach(func() {
 		osArgs := []string{
@@ -29,7 +66,7 @@ var _ = Describe("ClientConfig", func() {
 
 	Describe("Validate", func() {
 		BeforeEach(func() {
-			configuration = `{
+			configuration = fmt.Sprintf(`{
 				"Ips": ["fakeIp"],
 				"BackupServerPort": 8081,
 				"BackupAllMasters": false,
@@ -40,14 +77,14 @@ var _ = Describe("ClientConfig", func() {
 					"Password": "fake_password",
 				},
 				"Certificates": {
-					"ClientCert": "fixtures/client.crt",
-					"ClientKey": "fixtures/client.key",
-					"CACert": "fixtures/CertAuth.crt",
+					"ClientCert": %q,
+					"ClientKey": %q,
+					"CACert": %q,
 				},
 				"TmpDir": "fakeTmp",
 				"OutputDir": "fakeOutput",
 				"SymmetricKey": "fakeKey",
-			}`
+			}`, certPath, privateKeyPath, caPath)
 		})
 
 		It("does not return error on valid config", func() {
@@ -95,14 +132,14 @@ var _ = Describe("ClientConfig", func() {
 
 	Describe("CreateTlsConfig", func() {
 		BeforeEach(func() {
-			configuration = `{
+			configuration = fmt.Sprintf(`{
 				"Certificates": {
-					"CACert": "fixtures/CertAuth.crt",
-					"ClientCert": "fixtures/client.crt",
-					"ClientKey": "fixtures/client.key",
+					"ClientCert": %q,
+					"ClientKey": %q,
+					"CACert": %q,
 					"ServerName": "myServerName"
 				}
-			}`
+			}`, certPath, privateKeyPath, caPath)
 		})
 
 		Context("When certificates are valid", func() {
@@ -125,9 +162,9 @@ var _ = Describe("ClientConfig", func() {
 
 			Context("When CA file is an invalid certificate", func() {
 				It("Returns an error", func() {
-					rootConfig.Certificates.CACert = "fixtures/InvalidCert.crt"
+					rootConfig.Certificates.CACert = privateKeyPath
 					err := rootConfig.CreateTlsConfig()
-					Expect(err).To(MatchError("unable to load CA certificate at fixtures/InvalidCert.crt"))
+					Expect(err).To(MatchError("unable to load CA certificate at " + privateKeyPath))
 				})
 			})
 		})

@@ -52,3 +52,7 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/validator.v2"
+
+[[override]]
+  branch = "master"
+  name = "github.com/square/certstrap"

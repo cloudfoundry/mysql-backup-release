@@ -49,6 +49,6 @@
   branch = "v2"
   name = "gopkg.in/validator.v2"
 
-[[constraint]]
-  name = "github.com/imdario/mergo"
-  version = "0.3.7"
+[[override]]
+  branch = "master"
+  name = "github.com/square/certstrap"
