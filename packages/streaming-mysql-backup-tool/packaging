@@ -2,13 +2,10 @@
 
 set -eux
 
-mkdir -p ${BOSH_INSTALL_TARGET}/src
-cp -a . ${BOSH_INSTALL_TARGET}/src
-export GOPATH=$BOSH_INSTALL_TARGET
+source /var/vcap/packages/golang-1.12-linux/bosh/compile.env
+mkdir -p ${BOSH_INSTALL_TARGET}/bin
+mkdir -p ${GOPATH}/src
 
-export GOROOT=$(readlink -nf /var/vcap/packages/golang-1.11-linux)
-export PATH=$GOROOT/bin:$PATH
+mv streaming-mysql-backup-tool ${GOPATH}/src
 
-go install streaming-mysql-backup-tool
-
-rm -rf ${BOSH_INSTALL_TARGET}/src ${BOSH_INSTALL_TARGET}/pkg
+go build -o ${BOSH_INSTALL_TARGET}/bin/streaming-mysql-backup-tool streaming-mysql-backup-tool
