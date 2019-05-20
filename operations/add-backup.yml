@@ -24,7 +24,6 @@
         tls:
           server_certificate: ((cf_mysql_backup_cert.certificate))
           server_key: ((cf_mysql_backup_cert.private_key))
-          client_ca: ((cf_mysql_backup_client_cert.ca))
 
 - type: replace
   path: /instance_groups/-
@@ -42,8 +41,6 @@
           symmetric_key: ((cf_mysql_backup_symmetric_key))
           tls:
             ca_certificate: ((cf_mysql_backup_cert.ca))
-            client_certificate: ((cf_mysql_backup_client_cert.certificate))
-            client_key: ((cf_mysql_backup_client_cert.private_key))
             server_name: &server_name streaming_mysql_backup_tool
 
     - name: service-backup
@@ -97,23 +94,4 @@
     type: certificate
     options:
       ca: cf_mysql_backup_ca
-      common_name: *server_name
-
-- type: replace
-  path: /variables/-
-  value:
-    name: cf_mysql_backup_client_ca
-    type: certificate
-    options:
-      is_ca: true
-      common_name: generated-backup-client-ca
-
-
-- type: replace
-  path: /variables/-
-  value:
-    name: cf_mysql_backup_client_cert
-    type: certificate
-    options:
-      ca: cf_mysql_backup_client_ca
       common_name: *server_name

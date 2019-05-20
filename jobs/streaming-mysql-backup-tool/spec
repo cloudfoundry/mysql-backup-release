@@ -42,8 +42,12 @@ properties:
   cf-mysql-backup.disabled:
     description: 'If true, the tool will not be run'
     default: false
+  cf-mysql-backup.enable_mutual_tls:
+    description: 'If true, the backup server will validate the certificate from backup client'
+    default: false
   cf-mysql-backup.tls.client_ca:
     description: 'CA for validating client certs'
+    default: ''
   cf-mysql-backup.tls.server_certificate:
     description: 'certificate'
   cf-mysql-backup.tls.server_key:

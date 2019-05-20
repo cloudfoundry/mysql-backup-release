@@ -43,10 +43,15 @@ properties:
     cf-mysql-backup.backup_from_inactive_node:
       description: 'If true, backups will be taken from the galera node with the highest wsrep_local_index'
       default: false
+    cf-mysql-backup.enable_mutual_tls:
+      description: 'If true, the backup client will present a certificate to the server'
+      default: false
     cf-mysql-backup.tls.client_certificate:
       description: 'client certificate'
+      default: ''
     cf-mysql-backup.tls.client_key:
       description: 'client private key'
+      default: ''
     cf-mysql-backup.tls.ca_certificate:
       description: 'CA certificate'
     cf-mysql-backup.tls.server_name:

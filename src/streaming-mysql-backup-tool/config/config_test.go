@@ -2,7 +2,11 @@ package config_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	configPkg "streaming-mysql-backup-tool/config"
 
+	"code.cloudfoundry.org/tlsconfig/certtest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-config/test_helpers"
@@ -114,4 +118,116 @@ var _ = Describe("Config", func() {
 			Expect(cmd.Args).To(Equal([]string{"echo", "-n", "hello"}))
 		})
 	})
+
+	Describe("CreateTlsConfig", func() {
+		var (
+			rootConfig    *configPkg.Config
+			configuration string
+
+			caPath         string
+			clientCaPath   string
+			certPath       string
+			privateKeyPath string
+			tmpDir         string
+		)
+		BeforeEach(func() {
+			ca, err := certtest.BuildCA("serverCA")
+			Expect(err).ToNot(HaveOccurred())
+			caBytes, err := ca.CertificatePEM()
+			Expect(err).ToNot(HaveOccurred())
+
+			certificate, err := ca.BuildSignedCertificate("serverCert")
+			Expect(err).ToNot(HaveOccurred())
+			certPEM, privateKey, err := certificate.CertificatePEMAndPrivateKey()
+			Expect(err).ToNot(HaveOccurred())
+
+			clientCa, err := certtest.BuildCA("clientCA")
+			Expect(err).ToNot(HaveOccurred())
+			clientCaBytes, err := clientCa.CertificatePEM()
+			Expect(err).ToNot(HaveOccurred())
+
+			tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
+			Expect(err).ToNot(HaveOccurred())
+
+			caPath = filepath.Join(tmpDir, "ca.crt")
+			Expect(ioutil.WriteFile(caPath, caBytes, 0666)).To(Succeed())
+			certPath = filepath.Join(tmpDir, "cert.crt")
+			Expect(ioutil.WriteFile(certPath, certPEM, 0666)).To(Succeed())
+			privateKeyPath = filepath.Join(tmpDir, "key.key")
+			Expect(ioutil.WriteFile(privateKeyPath, privateKey, 0666)).To(Succeed())
+			clientCaPath = filepath.Join(tmpDir, "client-ca.crt")
+			Expect(ioutil.WriteFile(clientCaPath, clientCaBytes, 0666)).To(Succeed())
+		})
+
+		JustBeforeEach(func() {
+			osArgs := []string{
+				"streaming-mysql-backup-client",
+				fmt.Sprintf("-config=%s", configuration),
+			}
+
+			var err error
+			rootConfig, err = configPkg.NewConfig(osArgs)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("When Mutual TLS is enabled", func() {
+			BeforeEach(func() {
+				configuration = fmt.Sprintf(`{
+				"Certificates": {
+					"Cert": %q,
+					"Key": %q,
+					"ClientCA": %q
+				},
+                "EnableMutualTLS": true
+			}`, certPath, privateKeyPath, clientCaPath)
+			})
+
+			Context("When certificates are valid", func() {
+				It("Creates a TlsConfig suitable for mTLS", func() {
+					Expect(rootConfig.CreateTlsConfig()).To(Succeed())
+					Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(1))
+					Expect(rootConfig.Certificates.TlsConfig.ClientCAs.Subjects()).To(HaveLen(1))
+				})
+			})
+
+			Context("When certificates are invalid", func() {
+				Context("When certificate file does not exist", func() {
+					It("Returns an error", func() {
+						rootConfig.Certificates.ClientCA = "invalid_path"
+						err := rootConfig.CreateTlsConfig()
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError("failed to read file invalid_path: open invalid_path: no such file or directory"))
+					})
+				})
+
+				Context("When CA file is an invalid certificate", func() {
+					It("Returns an error", func() {
+						rootConfig.Certificates.ClientCA = privateKeyPath
+						err := rootConfig.CreateTlsConfig()
+						Expect(err).To(HaveOccurred())
+						Expect(err).To(MatchError("unable to load CA certificate at " + privateKeyPath))
+					})
+				})
+			})
+		})
+
+		Context("When Mutual TLS is not enabled", func() {
+			BeforeEach(func() {
+				configuration = fmt.Sprintf(`{
+				"Certificates": {
+					"Cert": %q,
+					"Key": %q,
+					"ClientCA": ""
+				}
+                }`, certPath, privateKeyPath)
+			})
+
+			It("Creates a TlsConfig without a Client CA", func() {
+				Expect(rootConfig.CreateTlsConfig()).To(Succeed())
+				Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(1))
+				Expect(rootConfig.Certificates.TlsConfig.ClientCAs).To(BeNil())
+			})
+		})
+	})
+
 })

@@ -24,6 +24,7 @@ type Config struct {
 	TmpDir                 string       `yaml:"TmpDir" validate:"nonzero"`
 	OutputDir              string       `yaml:"OutputDir" validate:"nonzero"`
 	SymmetricKey           string       `yaml:"SymmetricKey" validate:"nonzero"`
+	EnableMutualTLS        bool         `yaml:"EnableMutualTLS"`
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
 }
@@ -77,10 +78,16 @@ func NewConfig(osArgs []string) (*Config, error) {
 }
 
 func (this *Config) CreateTlsConfig() error {
-	newTLSConfig, err := tlsconfig.Build(
-		tlsconfig.WithInternalServiceDefaults(),
-		tlsconfig.WithIdentityFromFile(this.Certificates.ClientCert, this.Certificates.ClientKey),
-	).Client(
+
+	var config tlsconfig.Config
+	if this.EnableMutualTLS {
+		config = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(this.Certificates.ClientCert, this.Certificates.ClientKey),
+		)
+	}
+
+	newTLSConfig, err := config.Client(
 		tlsconfig.WithAuthorityFromFile(this.Certificates.CACert),
 		tlsconfig.WithServerName(this.Certificates.ServerName),
 	)

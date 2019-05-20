@@ -131,41 +131,64 @@ var _ = Describe("ClientConfig", func() {
 	})
 
 	Describe("CreateTlsConfig", func() {
-		BeforeEach(func() {
-			configuration = fmt.Sprintf(`{
+		Context("When Mutual TLS is enabled", func() {
+			BeforeEach(func() {
+				configuration = fmt.Sprintf(`{
 				"Certificates": {
 					"ClientCert": %q,
 					"ClientKey": %q,
 					"CACert": %q,
 					"ServerName": "myServerName"
-				}
+				},
+                EnableMutualTLS: true
 			}`, certPath, privateKeyPath, caPath)
+			})
+
+			Context("When certificates are valid", func() {
+				It("Creates a TlsConfig", func() {
+					Expect(rootConfig.CreateTlsConfig()).To(Succeed())
+					Expect(rootConfig.Certificates.TlsConfig.RootCAs).NotTo(BeNil())
+					Expect(rootConfig.Certificates.TlsConfig.ServerName).To(Equal("myServerName"))
+					Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(1))
+				})
+			})
+
+			Context("When certificates are invalid", func() {
+				Context("When certificate file does not exist", func() {
+					It("Returns an error", func() {
+						rootConfig.Certificates.CACert = "invalid_path"
+						err := rootConfig.CreateTlsConfig()
+						Expect(err).To(MatchError("failed to read file invalid_path: open invalid_path: no such file or directory"))
+					})
+				})
+
+				Context("When CA file is an invalid certificate", func() {
+					It("Returns an error", func() {
+						rootConfig.Certificates.CACert = privateKeyPath
+						err := rootConfig.CreateTlsConfig()
+						Expect(err).To(MatchError("unable to load CA certificate at " + privateKeyPath))
+					})
+				})
+			})
 		})
 
-		Context("When certificates are valid", func() {
+		Context("When Mutual TLS is not enabled", func() {
+			BeforeEach(func() {
+				configuration = fmt.Sprintf(`{
+				"Certificates": {
+					"ClientCert": "",
+					"ClientKey": "",
+					"CACert": %q,
+					"ServerName": "myServerName"
+				}
+			}`, caPath)
+			})
+
 			It("Creates a TlsConfig", func() {
 				Expect(rootConfig.CreateTlsConfig()).To(Succeed())
 				Expect(rootConfig.Certificates.TlsConfig.RootCAs).NotTo(BeNil())
 				Expect(rootConfig.Certificates.TlsConfig.ServerName).To(Equal("myServerName"))
-				Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(1))
-			})
-		})
-
-		Context("When certificates are invalid", func() {
-			Context("When certificate file does not exist", func() {
-				It("Returns an error", func() {
-					rootConfig.Certificates.CACert = "invalid_path"
-					err := rootConfig.CreateTlsConfig()
-					Expect(err).To(MatchError("failed to read file invalid_path: open invalid_path: no such file or directory"))
-				})
-			})
-
-			Context("When CA file is an invalid certificate", func() {
-				It("Returns an error", func() {
-					rootConfig.Certificates.CACert = privateKeyPath
-					err := rootConfig.CreateTlsConfig()
-					Expect(err).To(MatchError("unable to load CA certificate at " + privateKeyPath))
-				})
+				Expect(rootConfig.Certificates.TlsConfig.Certificates).To(HaveLen(0))
 			})
 		})
 	})

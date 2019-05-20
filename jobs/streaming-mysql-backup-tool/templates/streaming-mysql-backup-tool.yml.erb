@@ -21,6 +21,7 @@
       "Cert" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-cert.pem",
       "Key" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-key.pem",
       "ClientCA" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/client-ca.pem"
-    }
+    },
+    "EnableMutualTLS" => p('cf-mysql-backup.enable_mutual_tls')
   })
 %>
