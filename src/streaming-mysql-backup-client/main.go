@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"streaming-mysql-backup-client/client"
+	c "streaming-mysql-backup-client/client"
 	"streaming-mysql-backup-client/config"
 )
 
@@ -16,7 +16,7 @@ func main() {
 		logger.Fatal("Error parsing config file", err)
 	}
 
-	client := client.DefaultClient(*rootConfig)
+	client := c.DefaultClient(*rootConfig)
 	if err := client.Execute(); err != nil {
 		logger.Fatal("All backups failed. Not able to generate a valid backup artifact. See error(s) below: %s", err)
 	}

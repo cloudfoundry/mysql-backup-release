@@ -77,25 +77,25 @@ func NewConfig(osArgs []string) (*Config, error) {
 	return &rootConfig, nil
 }
 
-func (this *Config) CreateTlsConfig() error {
+func (c *Config) CreateTlsConfig() error {
 
 	var config tlsconfig.Config
-	if this.EnableMutualTLS {
+	if c.EnableMutualTLS {
 		config = tlsconfig.Build(
 			tlsconfig.WithInternalServiceDefaults(),
-			tlsconfig.WithIdentityFromFile(this.Certificates.ClientCert, this.Certificates.ClientKey),
+			tlsconfig.WithIdentityFromFile(c.Certificates.ClientCert, c.Certificates.ClientKey),
 		)
 	}
 
 	newTLSConfig, err := config.Client(
-		tlsconfig.WithAuthorityFromFile(this.Certificates.CACert),
-		tlsconfig.WithServerName(this.Certificates.ServerName),
+		tlsconfig.WithAuthorityFromFile(c.Certificates.CACert),
+		tlsconfig.WithServerName(c.Certificates.ServerName),
 	)
 	if err != nil {
 		return err
 	}
 
-	this.Certificates.TlsConfig = newTLSConfig
+	c.Certificates.TlsConfig = newTLSConfig
 
 	return nil
 }
