@@ -1,22 +1,25 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 
+	"code.cloudfoundry.org/tlsconfig"
+
 	"streaming-mysql-backup-tool/api"
 	"streaming-mysql-backup-tool/collector"
-	"streaming-mysql-backup-tool/config"
+	c "streaming-mysql-backup-tool/config"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
 )
 
 func main() {
-	config, err := config.NewConfig(os.Args)
+	config, err := c.NewConfig(os.Args)
 	logger := config.Logger
 
 	if err != nil {
@@ -44,16 +47,37 @@ func main() {
 		logger.Fatal("Failed to create a file", err)
 	}
 
-	ioutil.WriteFile(pidfile.Name(), []byte(strconv.Itoa(os.Getpid())), 0644)
+	_ = ioutil.WriteFile(pidfile.Name(), []byte(strconv.Itoa(os.Getpid())), 0644)
 
 	logger.Info("Starting server with configuration", lager.Data{
 		"port": config.Port,
 	})
 
+	tlsConfig := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(config.Certificates.Cert, config.Certificates.Key),
+	)
+
+	var newTLSConfig *tls.Config
+
+	if config.EnableMutualTLS {
+		newTLSConfig, err = tlsConfig.Server(
+			tlsconfig.WithClientAuthenticationFromFile(config.Certificates.ClientCA),
+		)
+		if err != nil {
+			logger.Fatal("Failed to construct mTLS server", err)
+		}
+	} else {
+		newTLSConfig, err = tlsConfig.Server()
+		if err != nil {
+			logger.Fatal("Failed to construct TLS server", err)
+		}
+	}
+
 	httpServer := &http.Server{
 		Addr:      fmt.Sprintf(":%d", config.Port),
 		Handler:   wrappedMux,
-		TLSConfig: config.Certificates.TlsConfig,
+		TLSConfig: newTLSConfig,
 	}
 	err = httpServer.ListenAndServeTLS("", "")
 	logger.Fatal("Streaming backup tool has exited with an error", err)

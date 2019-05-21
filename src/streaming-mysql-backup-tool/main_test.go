@@ -12,12 +12,12 @@ import (
 
 	"code.cloudfoundry.org/tlsconfig"
 	"code.cloudfoundry.org/tlsconfig/certtest"
+	"github.com/onsi/gomega/gbytes"
 
 	"streaming-mysql-backup-tool/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -62,7 +62,8 @@ var _ = Describe("Main", func() {
 
 	AfterEach(func() {
 		if tmpDir != "" {
-			os.RemoveAll(tmpDir)
+			err := os.RemoveAll(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
 		}
 	})
 
@@ -74,9 +75,6 @@ var _ = Describe("Main", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		serverCA, err = certtest.BuildCA("serverCA")
-		Expect(err).ToNot(HaveOccurred())
-
-		clientCert, err = clientCA.BuildSignedCertificate("clientCert")
 		Expect(err).ToNot(HaveOccurred())
 
 		serverCert, err = serverCA.BuildSignedCertificate("serverCert")
@@ -110,295 +108,220 @@ var _ = Describe("Main", func() {
 		}
 	})
 
-	Context("When the TLS Config can not be built", func() {
-		AfterEach(func() {
-			err := os.Remove(rootConfig.PidFile)
-			Expect(err).ToNot(HaveOccurred())
-		})
-		It("Fails and logs an error", func() {
-			rootConfig.Certificates = config.Certificates{Cert: "Invalid cert designation", Key: "Invalid key designation"}
-			writeConfig(rootConfig)
-			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-			s, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(s).Should(gexec.Exit())
-			Expect(s.ExitCode()).To(Equal(2))
-			Expect(s).To(gbytes.Say("Failed to construct mTLS server"))
-		})
-	})
-
-	Context("When the client does not provide key and cert for mTLS", func() {
-		JustBeforeEach(func() {
-			// In case individual tests want to modify their rootConfig variable after BeforeEach
-			writeConfig(rootConfig)
-
-			backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
-		})
-		AfterEach(func() {
-			session.Kill()
-			session.Wait()
-			err := os.Remove(rootConfig.PidFile)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		Context("When the client does not provide a key and cert for mTLS", func() {
-			JustBeforeEach(func() {
-				serverCertPool, err := serverCA.CertPool()
+	Context("When mTLS is disabled (the default configuration)", func() {
+		Context("When the TLS Config can not be built during server startup", func() {
+			AfterEach(func() {
+				err := os.Remove(rootConfig.PidFile)
 				Expect(err).ToNot(HaveOccurred())
-
-				TLSClientConfig, err := tlsconfig.Build().Client(
-					tlsconfig.WithAuthority(serverCertPool),
-					tlsconfig.WithServerName("localhost"),
-				)
-
-				httpClient = &http.Client{
-					Transport: &http.Transport{
-						TLSClientConfig: TLSClientConfig,
-					},
-				}
+			})
+			It("Fails and logs an error", func() {
+				rootConfig.Certificates = config.Certificates{Cert: "Invalid cert designation", Key: "Invalid key designation"}
+				writeConfig(rootConfig)
 				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
-				Expect(err).ShouldNot(HaveOccurred())
-			})
-
-			It("Throws a bad certificate error", func() {
-				Eventually(func() error {
-					_, err := httpClient.Get(backupUrl)
-					return err
-				}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+				s, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(s).Should(gexec.Exit())
+				Expect(s.ExitCode()).To(Equal(2))
+				Expect(s).To(gbytes.Say("Failed to construct TLS server"))
 			})
 		})
 
-		Context("When the client provides a key or cert from an invalid authority", func() {
+		Context("When TLS options are configured correctly", func() {
 			JustBeforeEach(func() {
-				incorrectServerIdentity, err := serverCert.TLSCertificate()
-				Expect(err).ToNot(HaveOccurred())
+				// In case individual tests want to modify their rootConfig variable after BeforeEach
+				writeConfig(rootConfig)
 
-				serverCertPool, err := serverCA.CertPool()
-				Expect(err).ToNot(HaveOccurred())
-
-				TLSClientConfig, err := tlsconfig.Build(
-					tlsconfig.WithIdentity(incorrectServerIdentity), //This is an intentionally invalid identity for the server
-				).Client(
-					tlsconfig.WithAuthority(serverCertPool),
-					tlsconfig.WithServerName("localhost"),
-				)
-
-				httpClient = &http.Client{
-					Transport: &http.Transport{
-						TLSClientConfig: TLSClientConfig,
-					},
-				}
-				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
-				Expect(err).ShouldNot(HaveOccurred())
-			})
-
-			It("Throws a bad certificate error", func() {
-				Eventually(func() error {
-					_, err := httpClient.Get(backupUrl)
-					return err
-				}).Should(MatchError(ContainSubstring("tls: bad certificate")))
-			})
-		})
-	})
-
-	Context("When mTLS options are configured correctly", func() {
-		JustBeforeEach(func() {
-			// In case individual tests want to modify their rootConfig variable after BeforeEach
-			writeConfig(rootConfig)
-
-			backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
-			var (
-				err error
-			)
-			request, err = http.NewRequest("GET", backupUrl, nil)
-			request.SetBasicAuth("username", "password")
-
-			clientIdentity, err := clientCert.TLSCertificate()
-			Expect(err).ToNot(HaveOccurred())
-
-			serverCertPool, err := serverCA.CertPool()
-			Expect(err).ToNot(HaveOccurred())
-
-			mTLSClientConfig, err := tlsconfig.Build(
-				tlsconfig.WithIdentity(clientIdentity),
-			).Client(
-				tlsconfig.WithAuthority(serverCertPool),
-				tlsconfig.WithServerName("localhost"),
-			)
-
-			httpClient = &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: mTLSClientConfig,
-				},
-			}
-			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-			session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-		AfterEach(func() {
-			session.Kill()
-			session.Wait()
-			err := os.Remove(rootConfig.PidFile)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		Context("When the client uses TLS", func() {
-			JustBeforeEach(func() {
-				// We wait until the server is up and running and responding to requests
-				Eventually(func() error {
-					_, err := httpClient.Get(backupUrl)
-					return err
-				}).Should(Succeed())
-			})
-
-			Describe("Writing PID file", func() {
 				var (
-					pidFilePath string
+					err error
 				)
-				BeforeEach(func() {
-					pidFilePath = rootConfig.PidFile
-				})
 
-				It("Writes its PID file to the location specified ", func() {
-					Expect(pidFilePath).To(BeAnExistingFile())
-				})
+				backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+				request, err = http.NewRequest("GET", backupUrl, nil)
+				Expect(err).ToNot(HaveOccurred())
+				request.SetBasicAuth("username", "password")
 
-				It("Checks whether the PID file content matches the process ID", func() {
-					fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
-					Expect(err).ToNot(HaveOccurred())
-					actualPid, err := strconv.Atoi(string(fileBytes))
-					Expect(err).ToNot(HaveOccurred())
-					Expect(actualPid).To(Equal(command.Process.Pid))
-				})
+				serverCertPool, err := serverCA.CertPool()
+				Expect(err).ToNot(HaveOccurred())
+
+				tlsClientConfig, err := tlsconfig.Build().Client(
+					tlsconfig.WithAuthority(serverCertPool),
+					tlsconfig.WithServerName("localhost"),
+				)
+
+				httpClient = &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: tlsClientConfig,
+					},
+				}
+
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).ToNot(HaveOccurred())
 			})
 
-			Describe("Initiating a backup", func() {
-				It("Returns status 200 when the backup is scheduled", func() {
-					resp, err := httpClient.Do(request)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(200))
+			AfterEach(func() {
+				session.Kill()
+				session.Wait()
+				err := os.Remove(rootConfig.PidFile)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			Context("When the client uses TLS", func() {
+				JustBeforeEach(func() {
+					// We wait until the server is up and running and responding to requests
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}).Should(Succeed())
 				})
 
-				It("Returns the output from the configured backup command as the response body", func() {
-					resp, err := httpClient.Do(request)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					body, err := ioutil.ReadAll(resp.Body)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(body).To(Equal([]byte(expectedResponseBody)))
-				})
-
-				It("Has a trailer with empty Error field if it succeeded", func() {
-					resp, err := httpClient.Do(request)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					_, err = ioutil.ReadAll(resp.Body)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(BeEmpty())
-				})
-
-				Context("when the backup is unsuccessful", func() {
+				Describe("Writing PID file", func() {
+					var (
+						pidFilePath string
+					)
 					BeforeEach(func() {
-						rootConfig.Command = "cat nonexistentfile"
+						pidFilePath = rootConfig.PidFile
 					})
 
-					It("has HTTP 200 status code but writes the error to the trailer", func() {
+					It("Writes its PID file to the location specified ", func() {
+						Expect(pidFilePath).To(BeAnExistingFile())
+					})
+
+					It("Checks whether the PID file content matches the process ID", func() {
+						fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
+						Expect(err).ToNot(HaveOccurred())
+						actualPid, err := strconv.Atoi(string(fileBytes))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(actualPid).To(Equal(command.Process.Pid))
+					})
+				})
+
+				Describe("Initiating a backup", func() {
+					It("Returns status 200 when the backup is scheduled", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(200))
+					})
+
+					It("Returns the output from the configured backup command as the response body", func() {
 						resp, err := httpClient.Do(request)
 						Expect(err).ShouldNot(HaveOccurred())
 
-						Expect(resp.StatusCode).To(Equal(200))
-
-						// NOTE: You must read the body from the response in order to populate the response's
-						// trailers
 						body, err := ioutil.ReadAll(resp.Body)
 						Expect(err).ShouldNot(HaveOccurred())
-						Expect(body).To(Equal([]byte("")))
-
-						Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+						Expect(body).To(Equal([]byte(expectedResponseBody)))
 					})
-				})
 
-				Context("when the command fails halfway through", func() {
-					BeforeEach(func() {
-						// https://www.percona.com/doc/percona-xtrabackup/2.1/xtrabackup_bin/xtrabackup_exit_codes.html
-						longRunningScript := `echo -n hello
+					It("Has a trailer with empty Error field if it succeeded", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						_, err = ioutil.ReadAll(resp.Body)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(BeEmpty())
+					})
+
+					Context("when the backup is unsuccessful", func() {
+						BeforeEach(func() {
+							rootConfig.Command = "cat nonexistentfile"
+						})
+
+						It("has HTTP 200 status code but writes the error to the trailer", func() {
+							resp, err := httpClient.Do(request)
+							Expect(err).ShouldNot(HaveOccurred())
+
+							Expect(resp.StatusCode).To(Equal(200))
+
+							// NOTE: You must read the body from the response in order to populate the response's
+							// trailers
+							body, err := ioutil.ReadAll(resp.Body)
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(body).To(Equal([]byte("")))
+
+							Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+						})
+					})
+
+					Context("when the command fails halfway through", func() {
+						BeforeEach(func() {
+							// https://www.percona.com/doc/percona-xtrabackup/2.1/xtrabackup_bin/xtrabackup_exit_codes.html
+							longRunningScript := `echo -n hello
 										exit 1
 										echo world`
 
-						rootConfig.Command = saveBashScript(longRunningScript)
-					})
+							rootConfig.Command = saveBashScript(longRunningScript)
+						})
 
-					It("has HTTP 200 status code but writes the error to the trailer", func() {
+						It("has HTTP 200 status code but writes the error to the trailer", func() {
+							resp, err := httpClient.Do(request)
+							Expect(err).ShouldNot(HaveOccurred())
+
+							Expect(resp.StatusCode).To(Equal(200))
+
+							// NOTE: You must read the body from the response in order to populate the response's
+							// trailers
+							body, err := ioutil.ReadAll(resp.Body)
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(body).To(Equal([]byte("hello")))
+
+							Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+						})
+					})
+				})
+
+				Describe("REGRESSION: Hitting the same endpoint twice", func() {
+					It("does not fail", func() {
 						resp, err := httpClient.Do(request)
 						Expect(err).ShouldNot(HaveOccurred())
-
 						Expect(resp.StatusCode).To(Equal(200))
 
-						// NOTE: You must read the body from the response in order to populate the response's
-						// trailers
-						body, err := ioutil.ReadAll(resp.Body)
+						resp, err = httpClient.Do(request)
 						Expect(err).ShouldNot(HaveOccurred())
-						Expect(body).To(Equal([]byte("hello")))
+						Expect(resp.StatusCode).To(Equal(200))
+					})
+				})
 
-						Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+				Describe("Basic auth credentials", func() {
+					It("Expects Basic Auth credentials", func() {
+						resp, err := httpClient.Get(backupUrl)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+						Expect(resp.Header.Get("WWW-Authenticate")).To(Equal(`Basic realm="Authorization Required"`))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
+					})
+
+					It("Accepts good Basic Auth credentials", func() {
+						req, err := http.NewRequest("GET", backupUrl, nil)
+						Expect(err).ToNot(HaveOccurred())
+						req.SetBasicAuth("username", "password")
+						resp, err := httpClient.Do(req)
+
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					})
+
+					It("Does not accept bad Basic Auth credentials", func() {
+						req, err := http.NewRequest("GET", backupUrl, nil)
+						Expect(err).ToNot(HaveOccurred())
+						req.SetBasicAuth("bad_username", "bad_password")
+
+						resp, err := httpClient.Do(req)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
 					})
 				})
 			})
 
-			Describe("REGRESSION: Hitting the same endpoint twice", func() {
-				It("does not fail", func() {
-					resp, err := httpClient.Do(request)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(200))
-
-					resp, err = httpClient.Do(request)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(200))
-				})
-			})
-
-			Describe("basic auth credentials", func() {
-				It("expects Basic Auth creds", func() {
-					resp, err := httpClient.Get(backupUrl)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
-					Expect(resp.Header.Get("WWW-Authenticate")).To(Equal(`Basic realm="Authorization Required"`))
-
-					body, err := ioutil.ReadAll(resp.Body)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(body).ToNot(ContainSubstring(expectedResponseBody))
-				})
-
-				It("accepts good Basic Auth creds", func() {
-					req, err := http.NewRequest("GET", backupUrl, nil)
-					req.SetBasicAuth("username", "password")
-					resp, err := httpClient.Do(req)
-
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(http.StatusOK))
-				})
-
-				It("does not accept bad Basic Auth creds", func() {
-					req, err := http.NewRequest("GET", backupUrl, nil)
-					req.SetBasicAuth("bad_username", "bad_password")
-					resp, err := httpClient.Do(req)
-
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
-
-					body, err := ioutil.ReadAll(resp.Body)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(body).ToNot(ContainSubstring(expectedResponseBody))
-				})
-			})
-		})
-
-		Context("When a client without correct TLS configuration makes a request", func() {
-			Context("when the URL scheme is http", func() {
-				It("it is rejected with a protocol error", func() {
+			Context("When the client attempts to connect with http URL scheme", func() {
+				It("Fails to connect, returning a protocol error", func() {
 					backupUrl = fmt.Sprintf("http://localhost:%d/backup", rootConfig.Port)
 
 					httpClient = &http.Client{}
@@ -421,8 +344,8 @@ var _ = Describe("Main", func() {
 				})
 			})
 
-			Context("when the URL scheme is https", func() {
-				It("it is rejected with a certificate error", func() {
+			Context("When the client does not trust the server certificate", func() {
+				It("Fails to connect, returning certificate error", func() {
 					httpClient = &http.Client{}
 					Eventually(func() error {
 						_, err := httpClient.Get(backupUrl)
@@ -430,7 +353,335 @@ var _ = Describe("Main", func() {
 					}).Should(MatchError(ContainSubstring("x509: certificate signed by unknown authority")))
 				})
 			})
+		})
+	})
 
+	Context("When mTLS is enabled on the server", func() {
+		BeforeEach(func() {
+			rootConfig.EnableMutualTLS = true
+		})
+
+		Context("When the TLS Config can not be built during server startup", func() {
+			It("Fails and logs an error", func() {
+				rootConfig.Certificates = config.Certificates{Cert: "Invalid cert designation", Key: "Invalid key designation"}
+				writeConfig(rootConfig)
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				s, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(s).Should(gexec.Exit())
+				Expect(s.ExitCode()).To(Equal(2))
+				Expect(s).To(gbytes.Say("Failed to construct mTLS server"))
+			})
+		})
+
+		Context("When there is a problem with the client's certificate, such as", func() {
+			JustBeforeEach(func() {
+				// In case individual tests want to modify their rootConfig variable after BeforeEach
+				writeConfig(rootConfig)
+
+				backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+			})
+
+			AfterEach(func() {
+				session.Kill()
+				session.Wait()
+				err := os.Remove(rootConfig.PidFile)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			Context("When the client does not provide a certificate", func() {
+				JustBeforeEach(func() {
+					serverCertPool, err := serverCA.CertPool()
+					Expect(err).ToNot(HaveOccurred())
+
+					TLSClientConfig, err := tlsconfig.Build().Client(
+						tlsconfig.WithAuthority(serverCertPool),
+						tlsconfig.WithServerName("localhost"),
+					)
+
+					httpClient = &http.Client{
+						Transport: &http.Transport{
+							TLSClientConfig: TLSClientConfig,
+						},
+					}
+					command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+					session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				It("Throws a bad certificate error", func() {
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+				})
+			})
+
+			Context("When the client provides an untrusted certificate", func() {
+				JustBeforeEach(func() {
+					incorrectServerIdentity, err := serverCert.TLSCertificate()
+					Expect(err).ToNot(HaveOccurred())
+
+					serverCertPool, err := serverCA.CertPool()
+					Expect(err).ToNot(HaveOccurred())
+
+					TLSClientConfig, err := tlsconfig.Build(
+						tlsconfig.WithIdentity(incorrectServerIdentity), //This is an intentionally invalid identity for the server
+					).Client(
+						tlsconfig.WithAuthority(serverCertPool),
+						tlsconfig.WithServerName("localhost"),
+					)
+
+					httpClient = &http.Client{
+						Transport: &http.Transport{
+							TLSClientConfig: TLSClientConfig,
+						},
+					}
+					command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+					session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				It("Throws a bad certificate error", func() {
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+				})
+			})
+		})
+
+		Context("When TLS options are configured correctly", func() {
+			JustBeforeEach(func() {
+				// In case individual tests want to modify their rootConfig variable after BeforeEach
+				writeConfig(rootConfig)
+
+				var err error
+				clientCert, err = clientCA.BuildSignedCertificate("clientCert")
+				Expect(err).ToNot(HaveOccurred())
+
+				backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+				request, err = http.NewRequest("GET", backupUrl, nil)
+				Expect(err).ToNot(HaveOccurred())
+				request.SetBasicAuth("username", "password")
+
+				clientIdentity, err := clientCert.TLSCertificate()
+				Expect(err).ToNot(HaveOccurred())
+
+				serverCertPool, err := serverCA.CertPool()
+				Expect(err).ToNot(HaveOccurred())
+
+				mTLSClientConfig, err := tlsconfig.Build(
+					tlsconfig.WithIdentity(clientIdentity),
+				).Client(
+					tlsconfig.WithAuthority(serverCertPool),
+					tlsconfig.WithServerName("localhost"),
+				)
+
+				httpClient = &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: mTLSClientConfig,
+					},
+				}
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				session.Kill()
+				session.Wait()
+				err := os.Remove(rootConfig.PidFile)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			Context("When the client uses TLS", func() {
+				JustBeforeEach(func() {
+					// We wait until the server is up and running and responding to requests
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}).Should(Succeed())
+				})
+
+				Describe("Writing PID file", func() {
+					var (
+						pidFilePath string
+					)
+					BeforeEach(func() {
+						pidFilePath = rootConfig.PidFile
+					})
+
+					It("Writes its PID file to the location specified ", func() {
+						Expect(pidFilePath).To(BeAnExistingFile())
+					})
+
+					It("Checks whether the PID file content matches the process ID", func() {
+						fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
+						Expect(err).ToNot(HaveOccurred())
+						actualPid, err := strconv.Atoi(string(fileBytes))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(actualPid).To(Equal(command.Process.Pid))
+					})
+				})
+
+				Describe("Initiating a backup", func() {
+					It("Returns status 200 when the backup is scheduled", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(200))
+					})
+
+					It("Returns the output from the configured backup command as the response body", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(body).To(Equal([]byte(expectedResponseBody)))
+					})
+
+					It("Has a trailer with empty Error field if it succeeded", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						_, err = ioutil.ReadAll(resp.Body)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(BeEmpty())
+					})
+
+					Context("when the backup is unsuccessful", func() {
+						BeforeEach(func() {
+							rootConfig.Command = "cat nonexistentfile"
+						})
+
+						It("has HTTP 200 status code but writes the error to the trailer", func() {
+							resp, err := httpClient.Do(request)
+							Expect(err).ShouldNot(HaveOccurred())
+
+							Expect(resp.StatusCode).To(Equal(200))
+
+							// NOTE: You must read the body from the response in order to populate the response's
+							// trailers
+							body, err := ioutil.ReadAll(resp.Body)
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(body).To(Equal([]byte("")))
+
+							Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+						})
+					})
+
+					Context("when the command fails halfway through", func() {
+						BeforeEach(func() {
+							// https://www.percona.com/doc/percona-xtrabackup/2.1/xtrabackup_bin/xtrabackup_exit_codes.html
+							longRunningScript := `echo -n hello
+										exit 1
+										echo world`
+
+							rootConfig.Command = saveBashScript(longRunningScript)
+						})
+
+						It("has HTTP 200 status code but writes the error to the trailer", func() {
+							resp, err := httpClient.Do(request)
+							Expect(err).ShouldNot(HaveOccurred())
+
+							Expect(resp.StatusCode).To(Equal(200))
+
+							// NOTE: You must read the body from the response in order to populate the response's
+							// trailers
+							body, err := ioutil.ReadAll(resp.Body)
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(body).To(Equal([]byte("hello")))
+
+							Expect(resp.Trailer.Get(http.CanonicalHeaderKey("X-Backup-Error"))).To(ContainSubstring("exit status 1"))
+						})
+					})
+				})
+
+				Describe("REGRESSION: Hitting the same endpoint twice", func() {
+					It("does not fail", func() {
+						resp, err := httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(200))
+
+						resp, err = httpClient.Do(request)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(200))
+					})
+				})
+
+				Describe("Basic auth credentials", func() {
+					It("Expects Basic Auth credentials", func() {
+						resp, err := httpClient.Get(backupUrl)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+						Expect(resp.Header.Get("WWW-Authenticate")).To(Equal(`Basic realm="Authorization Required"`))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
+					})
+
+					It("Accepts good Basic Auth credentials", func() {
+						req, err := http.NewRequest("GET", backupUrl, nil)
+						Expect(err).ToNot(HaveOccurred())
+						req.SetBasicAuth("username", "password")
+						resp, err := httpClient.Do(req)
+
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					})
+
+					It("Does not accept bad Basic Auth credentials", func() {
+						req, err := http.NewRequest("GET", backupUrl, nil)
+						Expect(err).ToNot(HaveOccurred())
+						req.SetBasicAuth("bad_username", "bad_password")
+
+						resp, err := httpClient.Do(req)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
+					})
+				})
+			})
+
+			Context("When the client attempts to connect with http URL scheme", func() {
+				It("Fails to connect, returning a protocol error", func() {
+					backupUrl = fmt.Sprintf("http://localhost:%d/backup", rootConfig.Port)
+
+					httpClient = &http.Client{}
+					Eventually(func() bool {
+						res, err := httpClient.Get(backupUrl)
+						if err != nil {
+							if strings.Contains(err.Error(), "malformed HTTP response") {
+								return true
+							}
+						} else {
+							// Compatible fix for golang > 1.12, which no longer return an error.
+							resbody, err := ioutil.ReadAll(res.Body)
+							Expect(err).ToNot(HaveOccurred())
+							if res.StatusCode == 400 && strings.Contains(string(resbody), "Client sent an HTTP request to an HTTPS server.") {
+								return true
+							}
+						}
+						return false
+					}).Should(BeTrue())
+				})
+			})
+
+			Context("When the client does not trust the server certificate", func() {
+				It("Fails to connect, returning certificate error", func() {
+					httpClient = &http.Client{}
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}).Should(MatchError(ContainSubstring("x509: certificate signed by unknown authority")))
+				})
+			})
 		})
 	})
 })
