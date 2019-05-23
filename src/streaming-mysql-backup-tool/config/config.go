@@ -1,12 +1,14 @@
 package config
 
 import (
+	"crypto/tls"
 	"flag"
 	"os/exec"
 	"strings"
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/tlsconfig"
 	service_config "github.com/pivotal-cf-experimental/service-config"
 	"gopkg.in/validator.v2"
 )
@@ -27,9 +29,10 @@ type Credentials struct {
 }
 
 type Certificates struct {
-	Cert     string `yaml:"Cert" validate:"nonzero"`
-	Key      string `yaml:"Key" validate:"nonzero"`
-	ClientCA string `yaml:"ClientCA" validate:"nonzero"`
+	Cert      string `yaml:"Cert" validate:"nonzero"`
+	Key       string `yaml:"Key" validate:"nonzero"`
+	ClientCA  string `yaml:"ClientCA" validate:"nonzero"`
+	TLSConfig *tls.Config
 }
 
 func (c Config) Validate() error {
@@ -57,10 +60,40 @@ func NewConfig(osArgs []string) (*Config, error) {
 	err := serviceConfig.Read(&rootConfig)
 	rootConfig.Logger, _ = cflager.New(binaryName)
 
+	_ = rootConfig.createTLSConfig()
+
 	return &rootConfig, err
 }
 
 func (c Config) Cmd() *exec.Cmd {
 	fields := strings.Fields(c.Command)
 	return exec.Command(fields[0], fields[1:]...)
+}
+
+func (c *Config) createTLSConfig() error {
+	tlsConfig := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(c.Certificates.Cert, c.Certificates.Key),
+	)
+
+	var (
+		newTLSConfig *tls.Config
+		err          error
+	)
+
+	if c.EnableMutualTLS {
+		newTLSConfig, err = tlsConfig.Server(
+			tlsconfig.WithClientAuthenticationFromFile(c.Certificates.ClientCA),
+		)
+	} else {
+		newTLSConfig, err = tlsConfig.Server()
+	}
+
+	if err != nil {
+		return err
+	}
+
+	c.Certificates.TLSConfig = newTLSConfig
+
+	return nil
 }

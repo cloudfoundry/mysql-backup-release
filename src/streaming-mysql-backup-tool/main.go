@@ -1,14 +1,11 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
-
-	"code.cloudfoundry.org/tlsconfig"
 
 	"streaming-mysql-backup-tool/api"
 	"streaming-mysql-backup-tool/collector"
@@ -53,31 +50,10 @@ func main() {
 		"port": config.Port,
 	})
 
-	tlsConfig := tlsconfig.Build(
-		tlsconfig.WithInternalServiceDefaults(),
-		tlsconfig.WithIdentityFromFile(config.Certificates.Cert, config.Certificates.Key),
-	)
-
-	var newTLSConfig *tls.Config
-
-	if config.EnableMutualTLS {
-		newTLSConfig, err = tlsConfig.Server(
-			tlsconfig.WithClientAuthenticationFromFile(config.Certificates.ClientCA),
-		)
-		if err != nil {
-			logger.Fatal("Failed to construct mTLS server", err)
-		}
-	} else {
-		newTLSConfig, err = tlsConfig.Server()
-		if err != nil {
-			logger.Fatal("Failed to construct TLS server", err)
-		}
-	}
-
 	httpServer := &http.Server{
 		Addr:      fmt.Sprintf(":%d", config.Port),
 		Handler:   wrappedMux,
-		TLSConfig: newTLSConfig,
+		TLSConfig: config.Certificates.TLSConfig,
 	}
 	err = httpServer.ListenAndServeTLS("", "")
 	logger.Fatal("Streaming backup tool has exited with an error", err)
