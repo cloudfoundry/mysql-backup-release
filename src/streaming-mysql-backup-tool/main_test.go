@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/tlsconfig"
 	"code.cloudfoundry.org/tlsconfig/certtest"
-	"github.com/onsi/gomega/gbytes"
 
 	"streaming-mysql-backup-tool/config"
 
@@ -106,25 +105,6 @@ var _ = Describe("Main", func() {
 			err := os.RemoveAll(tmpDir)
 			Expect(err).NotTo(HaveOccurred())
 		}
-	})
-
-	Context("When the TLS Config can not be built during server startup", func() {
-		AfterEach(func() {
-			err := os.Remove(rootConfig.PidFile)
-			Expect(err).ToNot(HaveOccurred())
-		})
-		It("Fails and logs an error", func() {
-			rootConfig.Certificates = config.Certificates{Cert: "Invalid cert designation", Key: "Invalid key designation"}
-			writeConfig(rootConfig)
-			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
-			s, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(s).Should(gexec.Exit())
-			Expect(s.ExitCode()).To(Equal(2))
-			// TODO: Not having the TLS setup in Main() makes us lose control of this failure.  Maybe check paths to files?
-			// Now our code panics instead of being cool in Main, so we don't get a chance to make a fancy error pop out.
-			Expect(s).To(gbytes.Say("no such file or directory"))
-		})
 	})
 
 	Context("When mTLS is disabled on the server (the default configuration)", func() {

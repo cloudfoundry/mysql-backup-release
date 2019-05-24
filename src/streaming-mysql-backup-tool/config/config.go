@@ -2,7 +2,9 @@ package config
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -40,7 +42,9 @@ func (c Config) Validate() error {
 }
 
 func NewConfig(osArgs []string) (*Config, error) {
-	var rootConfig Config
+	var (
+		rootConfig Config
+	)
 
 	binaryName := osArgs[0]
 	configurationOptions := osArgs[1:]
@@ -55,14 +59,20 @@ func NewConfig(osArgs []string) (*Config, error) {
 	})
 
 	serviceConfig.AddFlags(flags)
-	flags.Parse(configurationOptions)
+	_ = flags.Parse(configurationOptions)
 
 	err := serviceConfig.Read(&rootConfig)
 	rootConfig.Logger, _ = cflager.New(binaryName)
+	if err != nil {
+		return &rootConfig, err
+	}
 
-	_ = rootConfig.createTLSConfig()
+	err = rootConfig.createTLSConfig()
+	if err != nil {
+		return &rootConfig, err
+	}
 
-	return &rootConfig, err
+	return &rootConfig, nil
 }
 
 func (c Config) Cmd() *exec.Cmd {
@@ -71,6 +81,15 @@ func (c Config) Cmd() *exec.Cmd {
 }
 
 func (c *Config) createTLSConfig() error {
+
+	if !c.fileExists(c.Certificates.Cert) {
+		return errors.New("Server certificate does not exist at location [ " + c.Certificates.Cert + " ]")
+	}
+
+	if !c.fileExists(c.Certificates.Key) {
+		return errors.New("Server key does not exist at location [ " + c.Certificates.Key + " ]")
+	}
+
 	tlsConfig := tlsconfig.Build(
 		tlsconfig.WithInternalServiceDefaults(),
 		tlsconfig.WithIdentityFromFile(c.Certificates.Cert, c.Certificates.Key),
@@ -82,6 +101,9 @@ func (c *Config) createTLSConfig() error {
 	)
 
 	if c.EnableMutualTLS {
+		if !c.fileExists(c.Certificates.ClientCA) {
+			return errors.New("Client CA certificate does not exist at location [ " + c.Certificates.ClientCA + " ]")
+		}
 		newTLSConfig, err = tlsConfig.Server(
 			tlsconfig.WithClientAuthenticationFromFile(c.Certificates.ClientCA),
 		)
@@ -96,4 +118,11 @@ func (c *Config) createTLSConfig() error {
 	c.Certificates.TLSConfig = newTLSConfig
 
 	return nil
+}
+
+func (c Config) fileExists(filePath string) bool {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }

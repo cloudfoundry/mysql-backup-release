@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
@@ -21,7 +22,37 @@ var _ = Describe("Config", func() {
 		configuration                                        string
 		command, serverCertPath, serverKeyPath, clientCAPath string
 		enableMutualTLS                                      bool
+		tmpDir                                               string
+		osArgs                                               []string
+		err                                                  error
 	)
+
+	BeforeEach(func() {
+		// Create certificates
+		clientCA, err := certtest.BuildCA("clientCA")
+		Expect(err).ToNot(HaveOccurred())
+		clientCABytes, err := clientCA.CertificatePEM()
+		Expect(err).ToNot(HaveOccurred())
+
+		serverCA, err := certtest.BuildCA("serverCA")
+		Expect(err).ToNot(HaveOccurred())
+
+		serverCert, err := serverCA.BuildSignedCertificate("serverCert")
+		Expect(err).ToNot(HaveOccurred())
+		serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
+		Expect(err).ToNot(HaveOccurred())
+
+		// Write certificates to files
+		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
+		Expect(err).ToNot(HaveOccurred())
+
+		clientCAPath = filepath.Join(tmpDir, "clientCA.crt")
+		Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
+		serverCertPath = filepath.Join(tmpDir, "server.crt")
+		Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
+		serverKeyPath = filepath.Join(tmpDir, "server.key")
+		Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
+	})
 
 	JustBeforeEach(func() {
 		configurationTemplate := `{
@@ -42,23 +73,28 @@ var _ = Describe("Config", func() {
 
 		configuration = fmt.Sprintf(configurationTemplate, command, serverCertPath, serverKeyPath, clientCAPath, enableMutualTLS)
 
-		osArgs := []string{
+		osArgs = []string{
 			"streaming-mysql-backup-tool",
 			fmt.Sprintf("-config=%s", configuration),
 		}
+	})
 
-		var err error
-		rootConfig, err = config.NewConfig(osArgs)
-		Expect(err).ToNot(HaveOccurred())
+	AfterEach(func() {
+		if tmpDir != "" {
+			err := os.RemoveAll(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+		}
 	})
 
 	Describe("Validate", func() {
 
 		BeforeEach(func() {
 			command = "fakeCommand"
-			serverCertPath = "fakeCertPath"
-			serverKeyPath = "fakeKeyPath"
-			clientCAPath = "fakeCAPath"
+		})
+
+		JustBeforeEach(func() {
+			rootConfig, err = config.NewConfig(osArgs)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("does not return error on valid config", func() {
@@ -122,87 +158,83 @@ var _ = Describe("Config", func() {
 			command = "echo -n hello"
 		})
 
+		JustBeforeEach(func() {
+			rootConfig, err = config.NewConfig(osArgs)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("parses the command option", func() {
 			cmd := rootConfig.Cmd()
-
 			Expect(cmd.Args).To(Equal([]string{"echo", "-n", "hello"}))
 		})
 	})
 
-	Context("When mTLS is disabled (default behavior)", func() {
-		var (
-			tmpDir string
-		)
+	Context("When TLS Server credentials are misconfigured", func() {
+		Context("When server key path is invalid", func() {
+			BeforeEach(func() {
+				serverKeyPath = "invalidPath"
+			})
 
-		BeforeEach(func() {
-			// Create certificates
-			clientCA, err := certtest.BuildCA("clientCA")
-			Expect(err).ToNot(HaveOccurred())
-			clientCABytes, err := clientCA.CertificatePEM()
-			Expect(err).ToNot(HaveOccurred())
-
-			serverCA, err := certtest.BuildCA("serverCA")
-			Expect(err).ToNot(HaveOccurred())
-
-			serverCert, err := serverCA.BuildSignedCertificate("serverCert")
-			Expect(err).ToNot(HaveOccurred())
-			serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
-			Expect(err).ToNot(HaveOccurred())
-
-			// Write certificates to files
-			tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
-			Expect(err).ToNot(HaveOccurred())
-
-			clientCAPath = filepath.Join(tmpDir, "clientCA.crt")
-			Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
-			serverCertPath = filepath.Join(tmpDir, "server.crt")
-			Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
-			serverKeyPath = filepath.Join(tmpDir, "server.key")
-			Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
+			It("Fails to start with error", func() {
+				rootConfig, err = config.NewConfig(osArgs)
+				Expect(err.Error()).To(ContainSubstring("Server key does not exist at location [ invalidPath ]"))
+			})
 		})
 
+		Context("When server certificate path is invalid", func() {
+			BeforeEach(func() {
+				serverCertPath = "invalidPath"
+			})
+
+			It("Fails to start with error", func() {
+				rootConfig, err = config.NewConfig(osArgs)
+				Expect(err.Error()).To(ContainSubstring("Server certificate does not exist at location [ invalidPath ]"))
+			})
+		})
+
+		// An invalid CA path shouldn't be a problem unless mTLS is enabled
+		Context("When client CA path is invalid", func() {
+			BeforeEach(func() {
+				clientCAPath = "invalidPath"
+			})
+
+			It("Starts without error", func() {
+				rootConfig, err = config.NewConfig(osArgs)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	Context("When mTLS is disabled (default behavior)", func() {
 		It("Does not require or verify client certificates", func() {
+			rootConfig, err = config.NewConfig(osArgs)
+			Expect(err).ToNot(HaveOccurred())
+
 			Expect(rootConfig.Certificates.TLSConfig.ClientAuth).To(Equal(tls.NoClientCert), "Expected ClientAuth value of tls.NoClientCert")
 		})
 	})
 
-	Context("When mTLS is enabled", func() {
-		var (
-			tmpDir string
-		)
-
+	Context("When Mutual TLS is enabled", func() {
 		BeforeEach(func() {
-			// Enable mTLS
 			enableMutualTLS = true
-
-			// Create certificates
-			clientCA, err := certtest.BuildCA("clientCA")
-			Expect(err).ToNot(HaveOccurred())
-			clientCABytes, err := clientCA.CertificatePEM()
-			Expect(err).ToNot(HaveOccurred())
-
-			serverCA, err := certtest.BuildCA("serverCA")
-			Expect(err).ToNot(HaveOccurred())
-
-			serverCert, err := serverCA.BuildSignedCertificate("serverCert")
-			Expect(err).ToNot(HaveOccurred())
-			serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
-			Expect(err).ToNot(HaveOccurred())
-
-			// Write certificates to files
-			tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
-			Expect(err).ToNot(HaveOccurred())
-
-			clientCAPath = filepath.Join(tmpDir, "clientCA.crt")
-			Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
-			serverCertPath = filepath.Join(tmpDir, "server.crt")
-			Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
-			serverKeyPath = filepath.Join(tmpDir, "server.key")
-			Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
 		})
 
 		It("Requires and verifies client certificates", func() {
+			rootConfig, err = config.NewConfig(osArgs)
+			Expect(err).ToNot(HaveOccurred())
+
 			Expect(rootConfig.Certificates.TLSConfig.ClientAuth).To(Equal(tls.RequireAndVerifyClientCert), "Expected ClientAuth value of tls.RequireAndVerifyClientCert")
+		})
+
+		Context("When client CA path is invalid", func() {
+			BeforeEach(func() {
+				clientCAPath = "invalidPath"
+			})
+
+			It("Fails to start with error", func() {
+				rootConfig, err = config.NewConfig(osArgs)
+				Expect(err.Error()).To(ContainSubstring("Client CA certificate does not exist at location [ invalidPath ]"))
+			})
 		})
 
 	})
