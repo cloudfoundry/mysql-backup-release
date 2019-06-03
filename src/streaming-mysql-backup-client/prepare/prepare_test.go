@@ -12,7 +12,7 @@ var _ = Describe("Prepare Command", func() {
 
 		cmd := backupPrepare.Command("path/to/backup")
 
-		Expect(cmd.Path).To(Equal("/var/vcap/packages/xtrabackup/bin/xtrabackup"))
+		Expect(cmd.Path).To(Equal("xtrabackup"))
 		Expect(cmd.Args[1:]).To(Equal([]string{"--prepare", "--target-dir", "path/to/backup"}))
 	})
 })
