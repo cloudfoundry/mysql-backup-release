@@ -36,3 +36,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/pivotal/mysql-test-utils"
+
+[[override]]
+  branch = "master"
+  name = "github.com/square/certstrap"
