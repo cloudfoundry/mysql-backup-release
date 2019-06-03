@@ -19,9 +19,8 @@
   path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/tls/client_ca?
   value: ((cf_mysql_backup_client_cert.ca))
 
-
 - type: replace
-  path: /variables/-
+  path: /variables/name=cf_mysql_backup_client_ca?
   value:
     name: cf_mysql_backup_client_ca
     type: certificate
@@ -30,7 +29,7 @@
       common_name: generated-backup-client-ca
 
 - type: replace
-  path: /variables/-
+  path: /variables/name=cf_mysql_backup_client_cert?
   value:
     name: cf_mysql_backup_client_cert
     type: certificate
