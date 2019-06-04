@@ -57,7 +57,7 @@ var _ = Describe("BackupRestore", func() {
 		createBackupCertificates("backup-server."+sessionID, &credentials)
 
 		_, err := dockerClient.CreateVolume(docker.CreateVolumeOptions{
-			Name:   "restore-data." + sessionID,
+			Name: "restore-data." + sessionID,
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -79,7 +79,6 @@ var _ = Describe("BackupRestore", func() {
 		client := &http.Client{
 			Transport: transport,
 		}
-		defer client.CloseIdleConnections()
 
 		Eventually(func() error {
 			_, err := client.Get("https://127.0.0.1:" + backupServerPort)
