@@ -110,12 +110,17 @@
   branch = "master"
   digest = "1:5df5512e169f03e59ae4c598d161e43307dac055e825a3663562271fa0e1852f"
   name = "github.com/pivotal-cf-experimental/service-config"
-  packages = [
-    ".",
-    "test_helpers",
-  ]
+  packages = ["."]
   pruneopts = ""
   revision = "b1dc94de6ada8bfddf159ce2234958a8f02aec77"
+
+[[projects]]
+  digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   branch = "master"
@@ -173,14 +178,6 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:8012e3289c36d514a961b9b9a7576324a105c6eee7df346d92afd071cf79f97c"
-  name = "gopkg.in/validator.v2"
-  packages = ["."]
-  pruneopts = ""
-  revision = "460c83432a98c35224a6fe352acf8b23e067ad06"
-
-[[projects]]
-  branch = "v2"
   digest = "1:f769ed60e075e4221612c2f4162fccc9d3795ef358fa463425e3b3d7a5debb27"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -200,12 +197,9 @@
     "github.com/nu7hatch/gouuid",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
-    "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",
     "github.com/pivotal-cf-experimental/service-config",
-    "github.com/pivotal-cf-experimental/service-config/test_helpers",
-    "gopkg.in/validator.v2",
-    "gopkg.in/yaml.v2",
+    "github.com/pkg/errors",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

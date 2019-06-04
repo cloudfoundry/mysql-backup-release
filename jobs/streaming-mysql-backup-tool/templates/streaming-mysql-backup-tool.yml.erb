@@ -9,7 +9,7 @@
     defaults_file="/var/vcap/jobs/streaming-mysql-backup-tool/config/mysql-defaults-file.cnf"
   end
 
-  YAML.dump({
+  config = {
     "PidFile" => "/var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid",
     "Command" => "xtrabackup --defaults-file=#{defaults_file} --backup --stream=tar --target-dir=/var/vcap/store/xtrabackup_tmp/",
     "Port" => p('cf-mysql-backup.backup-server.port'),
@@ -17,11 +17,16 @@
       "Username" => username,
       "Password" => password
     },
-    "Certificates" => {
-      "Cert" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-cert.pem",
-      "Key" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/server-key.pem",
-      "ClientCA" => "/var/vcap/jobs/streaming-mysql-backup-tool/certificates/client-ca.pem"
+    "TLS" => {
+      "ServerCert" => p("cf-mysql-backup.tls.server_certificate"),
+      "ServerKey" => p("cf-mysql-backup.tls.server_key"),
+      "EnableMutualTLS" => p('cf-mysql-backup.enable_mutual_tls')
     },
-    "EnableMutualTLS" => p('cf-mysql-backup.enable_mutual_tls')
-  })
+  }
+
+  if config["TLS"]["EnableMutualTLS"]
+    config["TLS"]["ClientCA"] = p("cf-mysql-backup.tls.client_ca")
+  end
+
+  YAML.dump(config)
 %>

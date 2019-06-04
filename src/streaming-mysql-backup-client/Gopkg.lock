@@ -97,10 +97,7 @@
   branch = "master"
   digest = "1:5df5512e169f03e59ae4c598d161e43307dac055e825a3663562271fa0e1852f"
   name = "github.com/pivotal-cf-experimental/service-config"
-  packages = [
-    ".",
-    "test_helpers",
-  ]
+  packages = ["."]
   pruneopts = ""
   revision = "b1dc94de6ada8bfddf159ce2234958a8f02aec77"
 
@@ -184,14 +181,6 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:bf922c860f64bb6372daa82bb9c1e8ed144e97ac7587efa80d08b4e98737e9ea"
-  name = "gopkg.in/validator.v2"
-  packages = ["."]
-  pruneopts = ""
-  revision = "135c24b11c19e52befcae2ec3fca5d9b78c4e98e"
-
-[[projects]]
-  branch = "v2"
   digest = "1:f769ed60e075e4221612c2f4162fccc9d3795ef358fa463425e3b3d7a5debb27"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -214,11 +203,9 @@
     "github.com/onsi/gomega/gexec",
     "github.com/onsi/gomega/gstruct",
     "github.com/pivotal-cf-experimental/service-config",
-    "github.com/pivotal-cf-experimental/service-config/test_helpers",
     "github.com/pkg/errors",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/openpgp/packet",
-    "gopkg.in/validator.v2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

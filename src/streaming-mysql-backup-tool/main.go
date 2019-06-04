@@ -53,7 +53,7 @@ func main() {
 	httpServer := &http.Server{
 		Addr:      fmt.Sprintf(":%d", config.Port),
 		Handler:   wrappedMux,
-		TLSConfig: config.Certificates.TLSConfig,
+		TLSConfig: config.TLS.Config,
 	}
 	err = httpServer.ListenAndServeTLS("", "")
 	logger.Fatal("Streaming backup tool has exited with an error", err)

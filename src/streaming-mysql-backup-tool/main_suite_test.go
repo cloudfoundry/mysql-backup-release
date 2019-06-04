@@ -11,8 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"gopkg.in/yaml.v2"
-	"streaming-mysql-backup-tool/config"
 )
 
 var (
@@ -56,16 +54,6 @@ func createTmpFile(filePrefix string) *os.File {
 
 	return tmpFile
 }
-
-func writeConfig(rootConfig config.Config) {
-	fileToWrite, err := os.Create(configPath)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	marshalled, _ := yaml.Marshal(rootConfig)
-	_, err = fileToWrite.Write(marshalled)
-	Expect(err).ShouldNot(HaveOccurred())
-}
-
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
 })

@@ -3,14 +3,11 @@ package config_test
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-config/test_helpers"
 
 	"streaming-mysql-backup-tool/config"
 )
@@ -18,40 +15,36 @@ import (
 var _ = Describe("Config", func() {
 
 	var (
-		rootConfig                                           *config.Config
-		configuration                                        string
-		command, serverCertPath, serverKeyPath, clientCAPath string
-		enableMutualTLS                                      bool
-		tmpDir                                               string
-		osArgs                                               []string
-		err                                                  error
+		clientCA        string
+		command         string
+		configuration   string
+		enableMutualTLS bool
+		err             error
+		osArgs          []string
+		rootConfig      *config.Config
+		serverCert      string
+		serverKey       string
+		tmpDir          string
 	)
 
 	BeforeEach(func() {
 		// Create certificates
-		clientCA, err := certtest.BuildCA("clientCA")
+		clientAuthority, err := certtest.BuildCA("clientCA")
 		Expect(err).ToNot(HaveOccurred())
-		clientCABytes, err := clientCA.CertificatePEM()
+		clientCABytes, err := clientAuthority.CertificatePEM()
 		Expect(err).ToNot(HaveOccurred())
 
 		serverCA, err := certtest.BuildCA("serverCA")
 		Expect(err).ToNot(HaveOccurred())
 
-		serverCert, err := serverCA.BuildSignedCertificate("serverCert")
+		serverCertConfig, err := serverCA.BuildSignedCertificate("serverCert")
 		Expect(err).ToNot(HaveOccurred())
-		serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
-		Expect(err).ToNot(HaveOccurred())
-
-		// Write certificates to files
-		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
+		serverCertPEM, privateServerKey, err := serverCertConfig.CertificatePEMAndPrivateKey()
 		Expect(err).ToNot(HaveOccurred())
 
-		clientCAPath = filepath.Join(tmpDir, "clientCA.crt")
-		Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
-		serverCertPath = filepath.Join(tmpDir, "server.crt")
-		Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
-		serverKeyPath = filepath.Join(tmpDir, "server.key")
-		Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
+		clientCA = string(clientCABytes)
+		serverCert = string(serverCertPEM)
+		serverKey = string(privateServerKey)
 	})
 
 	JustBeforeEach(func() {
@@ -63,15 +56,22 @@ var _ = Describe("Config", func() {
 					"Username": "fake_username",
 					"Password": "fake_password",
 				},
-				"Certificates":{
-					"Cert": %q,
-					"Key": %q,
+				"TLS":{
+					"ServerCert": %q,
+					"ServerKey": %q,
 					"ClientCA": %q,
+					"EnableMutualTLS": %t
 				},
-				"EnableMutualTLS": %t
 			}`
 
-		configuration = fmt.Sprintf(configurationTemplate, command, serverCertPath, serverKeyPath, clientCAPath, enableMutualTLS)
+		configuration = fmt.Sprintf(
+			configurationTemplate,
+			command,
+			serverCert,
+			serverKey,
+			clientCA,
+			enableMutualTLS,
+		)
 
 		osArgs = []string{
 			"streaming-mysql-backup-tool",
@@ -84,73 +84,6 @@ var _ = Describe("Config", func() {
 			err := os.RemoveAll(tmpDir)
 			Expect(err).NotTo(HaveOccurred())
 		}
-	})
-
-	Describe("Validate", func() {
-
-		BeforeEach(func() {
-			command = "fakeCommand"
-		})
-
-		JustBeforeEach(func() {
-			rootConfig, err = config.NewConfig(osArgs)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("does not return error on valid config", func() {
-			err := rootConfig.Validate()
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if pidfile is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "PidFile")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Command is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Command")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Port is zero", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Port")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials.Username is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials.Username")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Credentials.Password is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Credentials.Password")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates.Cert is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates.Cert")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates.Key is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates.Key")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("returns an error if Certificates.ClientCA is blank", func() {
-			err := test_helpers.IsRequiredField(rootConfig, "Certificates.ClientCA")
-			Expect(err).ToNot(HaveOccurred())
-		})
 	})
 
 	Describe("Cmd", func() {
@@ -170,32 +103,38 @@ var _ = Describe("Config", func() {
 	})
 
 	Context("When TLS Server credentials are misconfigured", func() {
-		Context("When server key path is invalid", func() {
+		Context("When server key is invalid", func() {
 			BeforeEach(func() {
-				serverKeyPath = "invalidPath"
+				serverKey = "invalid-key"
 			})
 
 			It("Fails to start with error", func() {
 				rootConfig, err = config.NewConfig(osArgs)
-				Expect(err.Error()).To(ContainSubstring("Server key does not exist at location [ invalidPath ]"))
+				Expect(err).To(MatchError(
+					ContainSubstring("failed to load server certificate or private key: tls: failed to find any PEM data in key input"),
+				))
 			})
 		})
 
-		Context("When server certificate path is invalid", func() {
+		Context("When server certificate is invalid", func() {
 			BeforeEach(func() {
-				serverCertPath = "invalidPath"
+				serverCert = "invalid cert"
 			})
 
 			It("Fails to start with error", func() {
 				rootConfig, err = config.NewConfig(osArgs)
-				Expect(err.Error()).To(ContainSubstring("Server certificate does not exist at location [ invalidPath ]"))
+				Expect(err).To(
+					MatchError(
+						ContainSubstring("failed to load server certificate or private key: tls: failed to find any PEM data in certificate input"),
+					),
+				)
 			})
 		})
 
 		// An invalid CA path shouldn't be a problem unless mTLS is enabled
 		Context("When client CA path is invalid", func() {
 			BeforeEach(func() {
-				clientCAPath = "invalidPath"
+				clientCA = "invalid CA"
 			})
 
 			It("Starts without error", func() {
@@ -210,7 +149,8 @@ var _ = Describe("Config", func() {
 			rootConfig, err = config.NewConfig(osArgs)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(rootConfig.Certificates.TLSConfig.ClientAuth).To(Equal(tls.NoClientCert), "Expected ClientAuth value of tls.NoClientCert")
+			Expect(rootConfig.TLS.Config).ToNot(BeNil())
+			Expect(rootConfig.TLS.Config.ClientAuth).To(Equal(tls.NoClientCert), "Expected ClientAuth value of tls.NoClientCert")
 		})
 	})
 
@@ -223,17 +163,22 @@ var _ = Describe("Config", func() {
 			rootConfig, err = config.NewConfig(osArgs)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(rootConfig.Certificates.TLSConfig.ClientAuth).To(Equal(tls.RequireAndVerifyClientCert), "Expected ClientAuth value of tls.RequireAndVerifyClientCert")
+			Expect(rootConfig.TLS.Config).ToNot(BeNil())
+			Expect(rootConfig.TLS.Config.ClientAuth).To(Equal(tls.RequireAndVerifyClientCert), "Expected ClientAuth value of tls.RequireAndVerifyClientCert")
 		})
 
-		Context("When client CA path is invalid", func() {
+		Context("When client CA is invalid", func() {
 			BeforeEach(func() {
-				clientCAPath = "invalidPath"
+				clientCA = "invalid CA"
 			})
 
 			It("Fails to start with error", func() {
 				rootConfig, err = config.NewConfig(osArgs)
-				Expect(err.Error()).To(ContainSubstring("Client CA certificate does not exist at location [ invalidPath ]"))
+				Expect(err).To(
+					MatchError(
+						ContainSubstring("unable to load client CA certificate"),
+					),
+				)
 			})
 		})
 

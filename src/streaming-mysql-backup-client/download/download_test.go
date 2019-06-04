@@ -1,21 +1,23 @@
 package download_test
 
 import (
-	"code.cloudfoundry.org/tlsconfig/certtest"
 	"crypto/subtle"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"reflect"
 	"time"
+
+	"code.cloudfoundry.org/tlsconfig/certtest"
 
 	"github.com/pkg/errors"
 
 	"streaming-mysql-backup-client/clock/fakes"
+
 	"streaming-mysql-backup-client/config"
 	"streaming-mysql-backup-client/download"
 
@@ -48,7 +50,7 @@ var _ = Describe("Downloading the backups", func() {
 		downloader           download.DownloadBackup
 		logger               lagertest.TestLogger
 		fakeClock            *fakes.FakeClock
-		test_server          *httptest.Server
+		testServer           *httptest.Server
 		handlerFunc          func(http.ResponseWriter, *http.Request)
 		expectedResponseBody = make([]byte, 1024)
 		expectedUsername     string
@@ -60,6 +62,7 @@ var _ = Describe("Downloading the backups", func() {
 		backupCA             *certtest.Authority
 		otherCA              *certtest.Authority
 		tmpDir               string
+		tlsConfig            *tls.Config
 	)
 
 	AfterEach(func() {
@@ -85,43 +88,61 @@ var _ = Describe("Downloading the backups", func() {
 		backupCABytes, err := backupCA.CertificatePEM()
 		Expect(err).ToNot(HaveOccurred())
 
+		serverName := "expected-server-name"
+
 		backupCert, err := backupCA.BuildSignedCertificate("backupCert",
-			certtest.WithDomains("expected-server-name"))
+			certtest.WithDomains(serverName))
 		Expect(err).ToNot(HaveOccurred())
 
-		backupCertPEM, privateBackupKey, err := backupCert.CertificatePEMAndPrivateKey()
-		Expect(err).ToNot(HaveOccurred())
+		//backupCertPEM, privateBackupKey, err := backupCert.CertificatePEMAndPrivateKey()
+		//Expect(err).ToNot(HaveOccurred())
 
 		tmpDir, err = ioutil.TempDir("", "backup-download-tests")
 		Expect(err).ToNot(HaveOccurred())
 
-		backupCAPath := filepath.Join(tmpDir, "backupCA.crt")
-		Expect(ioutil.WriteFile(backupCAPath, backupCABytes, 0666)).To(Succeed())
-		backupCertPath := filepath.Join(tmpDir, "backup.crt")
-		Expect(ioutil.WriteFile(backupCertPath, backupCertPEM, 0666)).To(Succeed())
-		backupKeyPath := filepath.Join(tmpDir, "backup.key")
-		Expect(ioutil.WriteFile(backupKeyPath, privateBackupKey, 0666)).To(Succeed())
-
 		expectedUsername = "username"
 		expectedPassword = "password"
 		trailerError = ""
+		enableMutualTLS := false
 
-		rootConfig = &config.Config{
-			Logger: logger,
-			Credentials: config.Credentials{
-				Username: expectedUsername,
-				Password: expectedPassword,
-			},
-			Certificates: config.Certificates{
-				CACert:     backupCAPath,
-				ClientCert: backupCertPath,
-				ClientKey:  backupKeyPath,
-				ServerName: "expected-server-name",
-			},
+		configurationTemplate := `{
+						"Ips": ["fakeIp"],
+						"BackupServerPort": 8081,
+						"BackupAllMasters": false,
+						"BackupFromInactiveNode": false,
+						"GaleraAgentPort": null,
+						"Credentials":{
+							"Username": %q,
+							"Password": %q,
+						},
+						"TLS": {
+							"EnableMutualTLS": %t,
+							"ServerName": %q,
+							"ServerCACert": %q,
+						},
+						"TmpDir": "fakeTmp",
+						"OutputDir": "fakeOutput",
+						"SymmetricKey": "fakeKey",
+					}`
+
+		configuration := fmt.Sprintf(
+			configurationTemplate,
+			expectedUsername,
+			expectedPassword,
+			enableMutualTLS,
+			serverName,
+			string(backupCABytes),
+		)
+
+		osArgs := []string{
+			"streaming-mysql-backup-client",
+			fmt.Sprintf("-config=%s", configuration),
 		}
 
-		err = rootConfig.CreateTlsConfig()
-		Expect(err).ToNot(HaveOccurred())
+		rootConfig, err = config.NewConfig(osArgs)
+		Expect(err).NotTo(HaveOccurred())
+
+		rootConfig.Logger = logger
 
 		//this 'happy-path' server handler can be overridden in later BeforeEach blocks
 		handlerFunc = func(w http.ResponseWriter, r *http.Request) {
@@ -143,29 +164,23 @@ var _ = Describe("Downloading the backups", func() {
 
 		certificate, err = backupCert.TLSCertificate()
 		Expect(err).NotTo(HaveOccurred())
+
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{certificate},
+		}
 	})
 
 	JustBeforeEach(func() {
 		handler := http.HandlerFunc(handlerFunc)
-		test_server = httptest.NewUnstartedServer(handler)
-
-		certPool, err := backupCA.CertPool()
-		Expect(err).ToNot(HaveOccurred())
-
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{certificate},
-			RootCAs:      certPool,
-		}
-
-		test_server.TLS = tlsConfig
-
-		test_server.StartTLS()
+		testServer = httptest.NewUnstartedServer(handler)
+		testServer.TLS = tlsConfig
+		testServer.StartTLS()
 
 		downloader = download.DefaultDownloadBackup(fakeClock, *rootConfig)
 	})
 
 	AfterEach(func() {
-		test_server.Close()
+		testServer.Close()
 		os.Remove("file.tar")
 	})
 
@@ -176,7 +191,7 @@ var _ = Describe("Downloading the backups", func() {
 		})
 
 		It("Returns a not authorized error", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("Unauthorized"))
 			Expect(logger.Buffer()).Should(Say(`Unauthorized`))
@@ -188,7 +203,7 @@ var _ = Describe("Downloading the backups", func() {
 			It("downloads a backup and logs", func() {
 				expectedResponseBody = []byte("some response body")
 
-				err := downloader.DownloadBackup(test_server.URL, bufWriter)
+				err := downloader.DownloadBackup(testServer.URL, bufWriter)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(string(bufWriter.Buffer.Contents())).To(Equal("some response body"))
@@ -205,37 +220,75 @@ var _ = Describe("Downloading the backups", func() {
 				otherCert, err := otherCA.BuildSignedCertificate("otherCert",
 					certtest.WithDomains("other"))
 				Expect(err).ToNot(HaveOccurred())
-				certificate, err = otherCert.TLSCertificate()
+
+				certificate, err := otherCert.TLSCertificate()
 				Expect(err).NotTo(HaveOccurred())
 
+				tlsConfig.Certificates = []tls.Certificate{certificate}
 			})
 
 			It("returns an error with a stack", func() {
-				err := downloader.DownloadBackup(test_server.URL, bufWriter)
+				err := downloader.DownloadBackup(testServer.URL, bufWriter)
+				Expect(err).To(HaveOccurred())
 				Expect(reflect.TypeOf(err).String()).To(Equal("*errors.withStack"))
 				Expect(err).To(MatchError(ContainSubstring("certificate is valid for other, not expected-server-name")))
 			})
 		})
 	})
 
-	Context("when the certificate is signed by an unknown CA", func() {
+	// When the client does not trust the server's CA
+	Context("when the server CA is signed by an unknown CA", func() {
 		BeforeEach(func() {
 			var err error
 			otherCA, err = certtest.BuildCA("other")
 			Expect(err).ToNot(HaveOccurred())
-			otherCABytes, err := otherCA.CertificatePEM()
-			Expect(err).ToNot(HaveOccurred())
-			otherCAPath := filepath.Join(tmpDir, "otherCA.crt")
-			Expect(ioutil.WriteFile(otherCAPath, otherCABytes, 0666)).To(Succeed())
 
-			rootConfig.Certificates.CACert = otherCAPath
-			rootConfig.CreateTlsConfig()
+			rootConfig.TLS.Config.RootCAs, err = otherCA.CertPool()
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("returns an error with a stack", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
+			Expect(err).To(HaveOccurred())
 			Expect(reflect.TypeOf(err).String()).To(Equal("*errors.withStack"))
 			Expect(err).To(MatchError(ContainSubstring("x509: certificate signed by unknown authority")))
+		})
+	})
+
+	Context("When mTLS is enabled", func() {
+		BeforeEach(func() {
+			// Server configuration
+			certPool, err := backupCA.CertPool()
+			Expect(err).ToNot(HaveOccurred())
+
+			tlsConfig = &tls.Config{
+				Certificates: []tls.Certificate{certificate},
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    certPool,
+				MaxVersion:   tls.VersionTLS12,
+			}
+		})
+
+		Context("when a Downloader is configured with untrusted client certificates", func() {
+			BeforeEach(func() {
+				var err error
+				otherCA, err = certtest.BuildCA("other")
+				Expect(err).ToNot(HaveOccurred())
+
+				signedClientCert, err := otherCA.BuildSignedCertificate("client-certificate", certtest.WithDomains("client-certificate"))
+				Expect(err).NotTo(HaveOccurred())
+				clientCert, err := signedClientCert.TLSCertificate()
+				Expect(err).NotTo(HaveOccurred())
+
+				rootConfig.TLS.Config.Certificates = []tls.Certificate{clientCert}
+			})
+
+			It("returns an error with a stack", func() {
+				err := downloader.DownloadBackup(testServer.URL, bufWriter)
+				Expect(err).To(HaveOccurred())
+				Expect(reflect.TypeOf(err).String()).To(Equal("*errors.withStack"))
+				Expect(err).To(MatchError(ContainSubstring(`tls: bad certificate`)))
+			})
 		})
 	})
 
@@ -247,7 +300,7 @@ var _ = Describe("Downloading the backups", func() {
 		})
 
 		It("Returns non-200 error", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("Non-200 http Response"))
 			Expect(logger.Buffer()).Should(Say(`Response returned non-200`))
@@ -260,7 +313,7 @@ var _ = Describe("Downloading the backups", func() {
 		})
 
 		It("because the download was incomplete", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(trailerError))
 		})
@@ -289,7 +342,7 @@ var _ = Describe("Downloading the backups", func() {
 		})
 
 		It("returns the right error with a stack", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
 			Expect(reflect.TypeOf(err).String()).To(Equal("*errors.fundamental"))
 			Expect(err).To(MatchError(ContainSubstring(trailerError)))
 		})
@@ -301,7 +354,7 @@ var _ = Describe("Downloading the backups", func() {
 		})
 
 		It("logs and returns an error with a stack", func() {
-			err := downloader.DownloadBackup(test_server.URL, bufWriter)
+			err := downloader.DownloadBackup(testServer.URL, bufWriter)
 			Expect(reflect.TypeOf(err).String()).To(Equal("*errors.withStack"))
 			Expect(err).To(MatchError("i am a bad writer"))
 			Expect(logger.Buffer()).Should(Say("Failed to copy response to writer"))

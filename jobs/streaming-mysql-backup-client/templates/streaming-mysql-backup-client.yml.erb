@@ -1,39 +1,51 @@
----
-<%
-backup_tool_link = link('mysql-backup-tool')
-username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
-password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
+<%=
+  require 'yaml'
 
-cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
-galera_agent_port = nil
-if p('cf-mysql-backup.backup_from_inactive_node')
-  if_link("galera-agent") do |galera_agent_link|
-    galera_agent_port = galera_agent_link.p('port')
-  end.else_if_link("mysql") do |mysql_link|
-    galera_agent_port = mysql_link.p(['galera_agent.port', 'cf_mysql.mysql.galera_healthcheck.port'])
+  backup_tool_link = link('mysql-backup-tool')
+  username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
+  password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
+
+  cluster_ips = backup_tool_link.instances.map { |instance| instance.address }
+  galera_agent_port = nil
+  if p('cf-mysql-backup.backup_from_inactive_node')
+    if_link("galera-agent") do |galera_agent_link|
+      galera_agent_port = galera_agent_link.p('port')
+    end.else_if_link("mysql") do |mysql_link|
+      galera_agent_port = mysql_link.p(['galera_agent.port', 'cf_mysql.mysql.galera_healthcheck.port'])
+    end
   end
-end
 
+  config = {
+    "Ips" => cluster_ips,
+    "BackupServerPort" => p('cf-mysql-backup.backup-server.port'),
+    "BackupAllMasters" => p('cf-mysql-backup.backup-all-masters'),
+    "BackupFromInactiveNode" => p('cf-mysql-backup.backup_from_inactive_node'),
+    "GaleraAgentPort" => galera_agent_port,
+    "TmpDir" => p('cf-mysql-backup.backup-client.tmp_folder'),
+    "OutputDir" =>  p('cf-mysql-backup.backup-client.output_folder'),
+    "SymmetricKey" => p('cf-mysql-backup.symmetric_key'),
+    "TLS" => {
+      "EnableMutualTLS" => p('cf-mysql-backup.enable_mutual_tls'),
+      "ServerCACert" => p("cf-mysql-backup.tls.ca_certificate"),
+    },
+    "Credentials" => {
+      "Username" => username,
+      "Password" => password,
+    },
+    "MetadataFields" => {
+      "compressed" => "Y",
+      "encrypted" => "Y",
+    },
+  }
+
+  if_p('cf-mysql-backup.tls.server_name') do |server_name|
+    config["TLS"]["ServerName"] = server_name
+  end
+
+  if config["TLS"]["EnableMutualTLS"]
+    config["TLS"]["ClientCert"] = p("cf-mysql-backup.tls.client_certificate")
+    config["TLS"]["ClientKey"] = p("cf-mysql-backup.tls.client_key")
+  end
+
+  YAML.dump(config)
 %>
-Ips: <%= cluster_ips %>
-BackupServerPort: <%= p('cf-mysql-backup.backup-server.port') %>
-BackupAllMasters: <%= p('cf-mysql-backup.backup-all-masters') %>
-BackupFromInactiveNode: <%= p('cf-mysql-backup.backup_from_inactive_node') %>
-GaleraAgentPort: <%= galera_agent_port %>
-TmpDir: <%= p('cf-mysql-backup.backup-client.tmp_folder') %>
-OutputDir: <%= p('cf-mysql-backup.backup-client.output_folder') %>
-SymmetricKey: <%= p('cf-mysql-backup.symmetric_key') %>
-EnableMutualTLS: <%= p('cf-mysql-backup.enable_mutual_tls') %>
-Certificates:
-  CACert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/ca-certificate.pem"
-  ClientCert: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/client-cert.pem"
-  ClientKey: "/var/vcap/jobs/streaming-mysql-backup-client/certificates/client-key.pem"
-  <% if_p('cf-mysql-backup.tls.server_name') do |server_name| %>
-  ServerName: <%= server_name %>
-  <% end %>
-Credentials:
-  Username: <%= username %>
-  Password: <%= password %>
-MetadataFields:
-  compressed: Y
-  encrypted: Y

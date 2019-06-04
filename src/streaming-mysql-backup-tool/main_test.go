@@ -13,8 +13,6 @@ import (
 	"code.cloudfoundry.org/tlsconfig"
 	"code.cloudfoundry.org/tlsconfig/certtest"
 
-	"streaming-mysql-backup-tool/config"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -49,55 +47,67 @@ var _ = Describe("Main", func() {
 		command              *exec.Cmd
 		request              *http.Request
 		httpClient           *http.Client
-		rootConfig           config.Config
 		expectedResponseBody = "my_output"
+		tmpDir               string
+		clientAuthority      *certtest.Authority
+		serverAuthority      *certtest.Authority
 
-		tmpDir     string
-		clientCA   *certtest.Authority
-		clientCert *certtest.Certificate
-		serverCA   *certtest.Authority
-		serverCert *certtest.Certificate
+		serverCertPEM []byte
+		serverKeyPEM  []byte
+
+		backupServerConfig string
+		pidFile            string
+		backupServerPort   int
+		backupServerCmd    string
+		clientCA           string
+		enableMutualTLS    bool
 	)
 
 	BeforeEach(func() {
 		var err error
-		clientCA, err = certtest.BuildCA("clientCA")
-		Expect(err).ToNot(HaveOccurred())
-		clientCABytes, err := clientCA.CertificatePEM()
+		serverAuthority, err = certtest.BuildCA("serverCA")
 		Expect(err).ToNot(HaveOccurred())
 
-		serverCA, err = certtest.BuildCA("serverCA")
+		serverCert, err := serverAuthority.BuildSignedCertificate("serverCert")
 		Expect(err).ToNot(HaveOccurred())
-
-		serverCert, err = serverCA.BuildSignedCertificate("serverCert")
-		Expect(err).ToNot(HaveOccurred())
-		serverCertPEM, privateServerKey, err := serverCert.CertificatePEMAndPrivateKey()
+		serverCertPEM, serverKeyPEM, err = serverCert.CertificatePEMAndPrivateKey()
 		Expect(err).ToNot(HaveOccurred())
 
 		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
 		Expect(err).ToNot(HaveOccurred())
 
-		clientCAPath := filepath.Join(tmpDir, "clientCA.crt")
-		Expect(ioutil.WriteFile(clientCAPath, clientCABytes, 0666)).To(Succeed())
-		serverCertPath := filepath.Join(tmpDir, "server.crt")
-		Expect(ioutil.WriteFile(serverCertPath, serverCertPEM, 0666)).To(Succeed())
-		serverKeyPath := filepath.Join(tmpDir, "server.key")
-		Expect(ioutil.WriteFile(serverKeyPath, privateServerKey, 0666)).To(Succeed())
+		pidFile = tmpFilePath("pid")
+		backupServerPort = int(49000 + GinkgoParallelNode())
+		backupServerCmd = fmt.Sprintf("echo -n %s", expectedResponseBody)
+		enableMutualTLS = false
+	})
 
-		rootConfig = config.Config{
-			Port:    int(49000 + GinkgoParallelNode()),
-			Command: fmt.Sprintf("echo -n %s", expectedResponseBody),
-			PidFile: tmpFilePath("pid"),
-			Credentials: config.Credentials{
-				Username: "username",
-				Password: "password",
+	JustBeforeEach(func() {
+		configurationTemplate := `{
+			"Port": %d,
+			"Command": %q,
+			"PidFile": %q,
+			"Credentials": {
+				"Username": "username",
+				"Password": "password",
 			},
-			Certificates: config.Certificates{
-				Cert:     serverCertPath,
-				Key:      serverKeyPath,
-				ClientCA: clientCAPath,
-			},
-		}
+			"TLS": {
+				"ServerCert": %q,
+				"ServerKey": %q,
+				"EnableMutualTLS": %t,
+				"ClientCA": %q,
+			}
+		}`
+
+		backupServerConfig = fmt.Sprintf(configurationTemplate,
+			backupServerPort,
+			backupServerCmd,
+			pidFile,
+			serverCertPEM,
+			serverKeyPEM,
+			enableMutualTLS,
+			clientCA,
+		)
 	})
 
 	AfterEach(func() {
@@ -109,19 +119,16 @@ var _ = Describe("Main", func() {
 
 	Context("When mTLS is disabled on the server (the default configuration)", func() {
 		JustBeforeEach(func() {
-			// In case individual tests want to modify their rootConfig variable after BeforeEach
-			writeConfig(rootConfig)
-
 			var (
 				err error
 			)
 
-			backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+			backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
 			request, err = http.NewRequest("GET", backupUrl, nil)
 			Expect(err).ToNot(HaveOccurred())
 			request.SetBasicAuth("username", "password")
 
-			serverCertPool, err := serverCA.CertPool()
+			serverCertPool, err := serverAuthority.CertPool()
 			Expect(err).ToNot(HaveOccurred())
 
 			tlsClientConfig, err := tlsconfig.Build().Client(
@@ -135,7 +142,7 @@ var _ = Describe("Main", func() {
 				},
 			}
 
-			command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+			command = exec.Command(pathToMainBinary, fmt.Sprintf("-config=%s", backupServerConfig))
 			session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -143,7 +150,7 @@ var _ = Describe("Main", func() {
 		AfterEach(func() {
 			session.Kill()
 			session.Wait()
-			err := os.Remove(rootConfig.PidFile)
+			err := os.Remove(pidFile)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -161,7 +168,7 @@ var _ = Describe("Main", func() {
 					pidFilePath string
 				)
 				BeforeEach(func() {
-					pidFilePath = rootConfig.PidFile
+					pidFilePath = pidFile
 				})
 
 				It("Writes its PID file to the location specified ", func() {
@@ -169,7 +176,7 @@ var _ = Describe("Main", func() {
 				})
 
 				It("Checks whether the PID file content matches the process ID", func() {
-					fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
+					fileBytes, err := ioutil.ReadFile(pidFile)
 					Expect(err).ToNot(HaveOccurred())
 					actualPid, err := strconv.Atoi(string(fileBytes))
 					Expect(err).ToNot(HaveOccurred())
@@ -205,7 +212,7 @@ var _ = Describe("Main", func() {
 
 				Context("when the backup is unsuccessful", func() {
 					BeforeEach(func() {
-						rootConfig.Command = "cat nonexistentfile"
+						backupServerCmd = "cat nonexistentfile"
 					})
 
 					It("has HTTP 200 status code but writes the error to the trailer", func() {
@@ -231,7 +238,7 @@ var _ = Describe("Main", func() {
 										exit 1
 										echo world`
 
-						rootConfig.Command = saveBashScript(longRunningScript)
+						backupServerCmd = saveBashScript(longRunningScript)
 					})
 
 					It("has HTTP 200 status code but writes the error to the trailer", func() {
@@ -303,7 +310,7 @@ var _ = Describe("Main", func() {
 
 		Context("When the client attempts to connect with http URL scheme", func() {
 			It("Fails to connect, returning a protocol error", func() {
-				backupUrl = fmt.Sprintf("http://localhost:%d/backup", rootConfig.Port)
+				backupUrl = fmt.Sprintf("http://localhost:%d/backup", backupServerPort)
 
 				httpClient = &http.Client{}
 				Eventually(func() bool {
@@ -338,27 +345,32 @@ var _ = Describe("Main", func() {
 
 	Context("When mTLS is enabled on the server", func() {
 		BeforeEach(func() {
-			rootConfig.EnableMutualTLS = true
+			var err error
+			clientAuthority, err = certtest.BuildCA("clientCA")
+			Expect(err).ToNot(HaveOccurred())
+
+			clientCABytes, err := clientAuthority.CertificatePEM()
+			Expect(err).ToNot(HaveOccurred())
+
+			enableMutualTLS = true
+			clientCA = string(clientCABytes)
 		})
 
 		Context("When there is a problem with the client's certificate, such as", func() {
 			JustBeforeEach(func() {
-				// In case individual tests want to modify their rootConfig variable after BeforeEach
-				writeConfig(rootConfig)
-
-				backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+				backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
 			})
 
 			AfterEach(func() {
 				session.Kill()
 				session.Wait()
-				err := os.Remove(rootConfig.PidFile)
+				err := os.Remove(pidFile)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			Context("When the client does not provide a certificate", func() {
 				JustBeforeEach(func() {
-					serverCertPool, err := serverCA.CertPool()
+					serverCertPool, err := serverAuthority.CertPool()
 					Expect(err).ToNot(HaveOccurred())
 
 					TLSClientConfig, err := tlsconfig.Build().Client(
@@ -371,7 +383,7 @@ var _ = Describe("Main", func() {
 							TLSClientConfig: TLSClientConfig,
 						},
 					}
-					command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+					command = exec.Command(pathToMainBinary, fmt.Sprintf("-config=%s", backupServerConfig))
 					session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
 					Expect(err).ShouldNot(HaveOccurred())
 				})
@@ -386,10 +398,13 @@ var _ = Describe("Main", func() {
 
 			Context("When the client provides a certificate the server does not trust", func() {
 				JustBeforeEach(func() {
-					incorrectServerIdentity, err := serverCert.TLSCertificate()
+					clientCertConfig, err := serverAuthority.BuildSignedCertificate("untrusted-client-cert")
+					Expect(err).NotTo(HaveOccurred())
+
+					incorrectServerIdentity, err := clientCertConfig.TLSCertificate()
 					Expect(err).ToNot(HaveOccurred())
 
-					serverCertPool, err := serverCA.CertPool()
+					serverCertPool, err := serverAuthority.CertPool()
 					Expect(err).ToNot(HaveOccurred())
 
 					TLSClientConfig, err := tlsconfig.Build(
@@ -404,7 +419,7 @@ var _ = Describe("Main", func() {
 							TLSClientConfig: TLSClientConfig,
 						},
 					}
-					command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+					command = exec.Command(pathToMainBinary, fmt.Sprintf("-config=%s", backupServerConfig))
 					session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
 					Expect(err).ShouldNot(HaveOccurred())
 				})
@@ -420,22 +435,18 @@ var _ = Describe("Main", func() {
 
 		Context("When TLS options are configured correctly", func() {
 			JustBeforeEach(func() {
-				// In case individual tests want to modify their rootConfig variable after BeforeEach
-				writeConfig(rootConfig)
-
-				var err error
-				clientCert, err = clientCA.BuildSignedCertificate("clientCert")
+				clientCertConfig, err := clientAuthority.BuildSignedCertificate("clientCert")
 				Expect(err).ToNot(HaveOccurred())
 
-				backupUrl = fmt.Sprintf("https://localhost:%d/backup", rootConfig.Port)
+				backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
 				request, err = http.NewRequest("GET", backupUrl, nil)
 				Expect(err).ToNot(HaveOccurred())
 				request.SetBasicAuth("username", "password")
 
-				clientIdentity, err := clientCert.TLSCertificate()
+				clientIdentity, err := clientCertConfig.TLSCertificate()
 				Expect(err).ToNot(HaveOccurred())
 
-				serverCertPool, err := serverCA.CertPool()
+				serverCertPool, err := serverAuthority.CertPool()
 				Expect(err).ToNot(HaveOccurred())
 
 				mTLSClientConfig, err := tlsconfig.Build(
@@ -450,7 +461,7 @@ var _ = Describe("Main", func() {
 						TLSClientConfig: mTLSClientConfig,
 					},
 				}
-				command = exec.Command(pathToMainBinary, fmt.Sprintf("-configPath=%s", configPath))
+				command = exec.Command(pathToMainBinary, fmt.Sprintf("-config=%s", backupServerConfig))
 				session, err = gexec.Start(command, GinkgoWriter, GinkgoWriter)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
@@ -458,7 +469,7 @@ var _ = Describe("Main", func() {
 			AfterEach(func() {
 				session.Kill()
 				session.Wait()
-				err := os.Remove(rootConfig.PidFile)
+				err := os.Remove(pidFile)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -476,7 +487,7 @@ var _ = Describe("Main", func() {
 						pidFilePath string
 					)
 					BeforeEach(func() {
-						pidFilePath = rootConfig.PidFile
+						pidFilePath = pidFile
 					})
 
 					It("Writes its PID file to the location specified ", func() {
@@ -484,7 +495,7 @@ var _ = Describe("Main", func() {
 					})
 
 					It("Checks whether the PID file content matches the process ID", func() {
-						fileBytes, err := ioutil.ReadFile(rootConfig.PidFile)
+						fileBytes, err := ioutil.ReadFile(pidFile)
 						Expect(err).ToNot(HaveOccurred())
 						actualPid, err := strconv.Atoi(string(fileBytes))
 						Expect(err).ToNot(HaveOccurred())
@@ -520,7 +531,7 @@ var _ = Describe("Main", func() {
 
 					Context("when the backup is unsuccessful", func() {
 						BeforeEach(func() {
-							rootConfig.Command = "cat nonexistentfile"
+							backupServerCmd = "cat nonexistentfile"
 						})
 
 						It("has HTTP 200 status code but writes the error to the trailer", func() {
@@ -546,7 +557,7 @@ var _ = Describe("Main", func() {
 										exit 1
 										echo world`
 
-							rootConfig.Command = saveBashScript(longRunningScript)
+							backupServerCmd = saveBashScript(longRunningScript)
 						})
 
 						It("has HTTP 200 status code but writes the error to the trailer", func() {
@@ -618,7 +629,7 @@ var _ = Describe("Main", func() {
 
 			Context("When the client attempts to connect with http URL scheme", func() {
 				It("Fails to connect, returning a protocol error", func() {
-					backupUrl = fmt.Sprintf("http://localhost:%d/backup", rootConfig.Port)
+					backupUrl = fmt.Sprintf("http://localhost:%d/backup", backupServerPort)
 
 					httpClient = &http.Client{}
 					Eventually(func() bool {

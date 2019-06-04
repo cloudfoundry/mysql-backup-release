@@ -1,30 +1,29 @@
 package config
 
 import (
-	"flag"
-
 	"crypto/tls"
+	"crypto/x509"
+	"flag"
 	"os"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/tlsconfig"
 	service_config "github.com/pivotal-cf-experimental/service-config"
-	validator "gopkg.in/validator.v2"
+	"github.com/pkg/errors"
 )
 
 type Config struct {
-	Ips                    []string     `yaml:"Ips" validate:"nonzero"`
-	BackupServerPort       int          `yaml:"BackupServerPort"`
-	BackupAllMasters       bool         `yaml:"BackupAllMasters"`
-	BackupFromInactiveNode bool         `yaml:"BackupFromInactiveNode"`
-	GaleraAgentPort        int          `yaml:"GaleraAgentPort"`
-	Credentials            Credentials  `yaml:"Credentials" validate:"nonzero"`
-	Certificates           Certificates `yaml:"Certificates" validate:"nonzero"`
-	TmpDir                 string       `yaml:"TmpDir" validate:"nonzero"`
-	OutputDir              string       `yaml:"OutputDir" validate:"nonzero"`
-	SymmetricKey           string       `yaml:"SymmetricKey" validate:"nonzero"`
-	EnableMutualTLS        bool         `yaml:"EnableMutualTLS"`
+	Ips                    []string    `yaml:"Ips" validate:"nonzero"`
+	BackupServerPort       int         `yaml:"BackupServerPort"`
+	BackupAllMasters       bool        `yaml:"BackupAllMasters"`
+	BackupFromInactiveNode bool        `yaml:"BackupFromInactiveNode"`
+	GaleraAgentPort        int         `yaml:"GaleraAgentPort"`
+	Credentials            Credentials `yaml:"Credentials" validate:"nonzero"`
+	TmpDir                 string      `yaml:"TmpDir" validate:"nonzero"`
+	OutputDir              string      `yaml:"OutputDir" validate:"nonzero"`
+	SymmetricKey           string      `yaml:"SymmetricKey" validate:"nonzero"`
+	TLS                    TLSConfig   `yaml:"TLS"`
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
 }
@@ -34,16 +33,51 @@ type Credentials struct {
 	Password string `yaml:"Password" validate:"nonzero"`
 }
 
-type Certificates struct {
-	CACert     string `yaml:"CACert" validate:"nonzero"`
-	ServerName string `yaml:"ServerName"`
-	ClientCert string `yaml:"ClientCert" validate:"nonzero"`
-	ClientKey  string `yaml:"ClientKey" validate:"nonzero"`
-	TlsConfig  *tls.Config
+type TLSConfig struct {
+	EnableMutualTLS bool        `yaml:"EnableMutualTLS"`
+	ServerCACert    string      `yaml:"ServerCACert" validate:"nonzero"`
+	ServerName      string      `yaml:"ServerName"`
+	ClientCert      string      `yaml:"ClientCert" validate:"nonzero"`
+	ClientKey       string      `yaml:"ClientKey" validate:"nonzero"`
+	Config          *tls.Config `yaml:"-"`
 }
 
-func (c Config) Validate() error {
-	return validator.Validate(c)
+func (t *TLSConfig) unmarshalTLSConfig() error {
+	var certConfig tlsconfig.Config
+
+	if t.EnableMutualTLS {
+		clientCert, err := tls.X509KeyPair([]byte(t.ClientCert), []byte(t.ClientKey))
+		if err != nil {
+			return errors.Wrap(err, `failed to load client certificate or private key`)
+		}
+
+		certConfig = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentity(clientCert),
+		)
+	} else {
+		certConfig = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+		)
+	}
+
+	serverCA := x509.NewCertPool()
+
+	if ok := serverCA.AppendCertsFromPEM([]byte(t.ServerCACert)); !ok {
+		return errors.New(`unable to load server CA certificate`)
+	}
+
+	newTLSConfig, err := certConfig.Client(
+		tlsconfig.WithAuthority(serverCA),
+		tlsconfig.WithServerName(t.ServerName),
+	)
+	if err != nil {
+		return errors.Wrap(err, `failed to build client TLS config`)
+	}
+
+	t.Config = newTLSConfig
+
+	return nil
 }
 
 func NewConfig(osArgs []string) (*Config, error) {
@@ -62,40 +96,16 @@ func NewConfig(osArgs []string) (*Config, error) {
 	rootConfig.Logger.RegisterSink(lager.NewWriterSink(os.Stderr, lager.ERROR))
 
 	serviceConfig.AddFlags(flags)
-	flags.Parse(configurationOptions)
+	_ = flags.Parse(configurationOptions)
 
 	err := serviceConfig.Read(&rootConfig)
 	if err != nil {
-		return nil, err
+		return &rootConfig, err
 	}
 
-	err = rootConfig.CreateTlsConfig()
-	if err != nil {
-		return nil, err
+	if err := rootConfig.TLS.unmarshalTLSConfig(); err != nil {
+		return &rootConfig, err
 	}
 
 	return &rootConfig, nil
-}
-
-func (c *Config) CreateTlsConfig() error {
-
-	var config tlsconfig.Config
-	if c.EnableMutualTLS {
-		config = tlsconfig.Build(
-			tlsconfig.WithInternalServiceDefaults(),
-			tlsconfig.WithIdentityFromFile(c.Certificates.ClientCert, c.Certificates.ClientKey),
-		)
-	}
-
-	newTLSConfig, err := config.Client(
-		tlsconfig.WithAuthorityFromFile(c.Certificates.CACert),
-		tlsconfig.WithServerName(c.Certificates.ServerName),
-	)
-	if err != nil {
-		return err
-	}
-
-	c.Certificates.TlsConfig = newTLSConfig
-
-	return nil
 }

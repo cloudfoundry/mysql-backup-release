@@ -3,13 +3,10 @@ package download
 import (
 	"io"
 	"net/http"
-	"os"
 
 	"fmt"
 	"sync"
 	"time"
-
-	"crypto/tls"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/dustin/go-humanize"
@@ -29,21 +26,21 @@ type HttpDownloadBackup struct {
 	config config.Config
 }
 
-func NewDownloaderFromCredentials(username, password string, tlsConfig *tls.Config) DownloadBackup {
-	logger := lager.NewLogger("streaming-mysql-backup-client")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
-
-	return DefaultDownloadBackup(clock.DefaultClock(), config.Config{
-		Credentials: config.Credentials{
-			Username: username,
-			Password: password,
-		},
-		Certificates: config.Certificates{
-			TlsConfig: tlsConfig,
-		},
-		Logger: logger,
-	})
-}
+//func NewDownloaderFromCredentials(username, password string, tlsConfig *tls.Config) DownloadBackup {
+//	logger := lager.NewLogger("streaming-mysql-backup-client")
+//	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+//
+//	return DefaultDownloadBackup(clock.DefaultClock(), config.Config{
+//		Credentials: config.Credentials{
+//			Username: username,
+//			Password: password,
+//		},
+//		Certificates: config.Certificates{
+//			TlsConfig: tlsConfig,
+//		},
+//		Logger: logger,
+//	})
+//}
 
 func DefaultDownloadBackup(clock clock.Clock, config config.Config) DownloadBackup {
 	return &HttpDownloadBackup{
@@ -95,7 +92,7 @@ func (this *HttpDownloadBackup) DownloadBackup(backupURL string, backupWriter St
 
 	httpClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: this.config.Certificates.TlsConfig,
+			TLSClientConfig: this.config.TLS.Config,
 		},
 	}
 

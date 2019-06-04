@@ -2,27 +2,25 @@ package config
 
 import (
 	"crypto/tls"
-	"errors"
+	"crypto/x509"
 	"flag"
-	"os"
 	"os/exec"
 	"strings"
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/tlsconfig"
-	service_config "github.com/pivotal-cf-experimental/service-config"
-	"gopkg.in/validator.v2"
+	"github.com/pivotal-cf-experimental/service-config"
+	"github.com/pkg/errors"
 )
 
 type Config struct {
-	Command         string       `yaml:"Command" validate:"nonzero"`
-	Port            int          `yaml:"Port" validate:"nonzero"`
-	PidFile         string       `yaml:"PidFile" validate:"nonzero"`
-	Credentials     Credentials  `yaml:"Credentials" validate:"nonzero"`
-	Certificates    Certificates `yaml:"Certificates" validate:"nonzero"`
-	EnableMutualTLS bool         `yaml:"EnableMutualTLS"`
-	Logger          lager.Logger
+	Command     string      `yaml:"Command" validate:"nonzero"`
+	Port        int         `yaml:"Port" validate:"nonzero"`
+	PidFile     string      `yaml:"PidFile" validate:"nonzero"`
+	Credentials Credentials `yaml:"Credentials" validate:"nonzero"`
+	TLS         TLSConfig   `yaml:"TLS"`
+	Logger      lager.Logger
 }
 
 type Credentials struct {
@@ -30,15 +28,45 @@ type Credentials struct {
 	Password string `yaml:"Password" validate:"nonzero"`
 }
 
-type Certificates struct {
-	Cert      string `yaml:"Cert" validate:"nonzero"`
-	Key       string `yaml:"Key" validate:"nonzero"`
-	ClientCA  string `yaml:"ClientCA" validate:"nonzero"`
-	TLSConfig *tls.Config
+type TLSConfig struct {
+	EnableMutualTLS bool        `yaml:"EnableMutualTLS"`
+	ServerCert      string      `yaml:"ServerCert" validate:"nonzero"`
+	ServerKey       string      `yaml:"ServerKey" validate:"nonzero"`
+	ClientCA        string      `yaml:"ClientCA" validate:"nonzero"`
+	Config          *tls.Config `yaml:"-"`
 }
 
-func (c Config) Validate() error {
-	return validator.Validate(c)
+func (t *TLSConfig) unmarshalTLSConfig() error {
+	serverCert, err := tls.X509KeyPair([]byte(t.ServerCert), []byte(t.ServerKey))
+	if err != nil {
+		return errors.Wrapf(err, `failed to load server certificate or private key`)
+	}
+
+	certConfig := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentity(serverCert),
+	)
+
+	var configOptions []tlsconfig.ServerOption
+
+	if t.EnableMutualTLS {
+		clientCA := x509.NewCertPool()
+
+		if ok := clientCA.AppendCertsFromPEM([]byte(t.ClientCA)); !ok {
+			return errors.New(`unable to load client CA certificate`)
+		}
+
+		configOptions = append(configOptions, tlsconfig.WithClientAuthentication(clientCA))
+	}
+
+	serverTLSConfig, err := certConfig.Server(configOptions...)
+	if err != nil {
+		return errors.Wrap(err, `failed to build server TLS certConfig`)
+	}
+
+	t.Config = serverTLSConfig
+
+	return nil
 }
 
 func NewConfig(osArgs []string) (*Config, error) {
@@ -67,8 +95,7 @@ func NewConfig(osArgs []string) (*Config, error) {
 		return &rootConfig, err
 	}
 
-	err = rootConfig.createTLSConfig()
-	if err != nil {
+	if err := rootConfig.TLS.unmarshalTLSConfig(); err != nil {
 		return &rootConfig, err
 	}
 
@@ -78,51 +105,4 @@ func NewConfig(osArgs []string) (*Config, error) {
 func (c Config) Cmd() *exec.Cmd {
 	fields := strings.Fields(c.Command)
 	return exec.Command(fields[0], fields[1:]...)
-}
-
-func (c *Config) createTLSConfig() error {
-
-	if !c.fileExists(c.Certificates.Cert) {
-		return errors.New("Server certificate does not exist at location [ " + c.Certificates.Cert + " ]")
-	}
-
-	if !c.fileExists(c.Certificates.Key) {
-		return errors.New("Server key does not exist at location [ " + c.Certificates.Key + " ]")
-	}
-
-	tlsConfig := tlsconfig.Build(
-		tlsconfig.WithInternalServiceDefaults(),
-		tlsconfig.WithIdentityFromFile(c.Certificates.Cert, c.Certificates.Key),
-	)
-
-	var (
-		newTLSConfig *tls.Config
-		err          error
-	)
-
-	if c.EnableMutualTLS {
-		if !c.fileExists(c.Certificates.ClientCA) {
-			return errors.New("Client CA certificate does not exist at location [ " + c.Certificates.ClientCA + " ]")
-		}
-		newTLSConfig, err = tlsConfig.Server(
-			tlsconfig.WithClientAuthenticationFromFile(c.Certificates.ClientCA),
-		)
-	} else {
-		newTLSConfig, err = tlsConfig.Server()
-	}
-
-	if err != nil {
-		return err
-	}
-
-	c.Certificates.TLSConfig = newTLSConfig
-
-	return nil
-}
-
-func (c Config) fileExists(filePath string) bool {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return false
-	}
-	return true
 }
