@@ -23,6 +23,8 @@ consumes:
   type: mysql-backup-tool
 
 properties:
+    cf-mysql-backup.backup_ips:
+      description: 'Only to be set for leader follower topology, should be ignored for other topologies. Value should be set to [127.0.0.1] . This property is a list of IP address of servers which can generate backups.'
     cf-mysql-backup.symmetric_key:
       description: 'Symmetric Key used to encrypt backups'
     cf-mysql-backup.backup-client.output_folder:

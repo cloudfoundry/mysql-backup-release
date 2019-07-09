@@ -21,3 +21,8 @@ ${RELEASE_DIR}/src/streaming-mysql-backup-tool/bin/test "$@"
 
 echo -e "\nTesting Streaming backup client..."
 ${RELEASE_DIR}/src/streaming-mysql-backup-client/bin/test "$@"
+
+pushd ${RELEASE_DIR}/spec
+  bundle install
+  bundle exec rspec ./
+popd
