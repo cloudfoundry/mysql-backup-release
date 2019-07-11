@@ -26,12 +26,10 @@ describe 'streaming-mysql-backup-client job' do
 
   describe 'streaming-mysql-backup-client template' do
     let(:template) { job.template('config/streaming-mysql-backup-client.yml') }
-    context('when cluster_ips are provided') do
+    context('when backup_local_node_only is true') do
        let(:spec) {{
         "cf-mysql-backup" => {
-          "backup_ips" => [
-            "127.0.0.1"
-          ],
+          "backup_local_node_only" => true,
           'symmetric_key' => 'some-symmetric-key',
           'tls' => {
             'ca_certificate' => 'some-ca'
@@ -39,7 +37,7 @@ describe 'streaming-mysql-backup-client job' do
         }
        }}
 
-       it 'use cluster_ips as Ips in the config' do
+       it 'use 127.0.0.1 as Ips in the config' do
          tpl_output = template.render(spec, consumes: links)
          tpl_yaml = YAML.load(tpl_output)
          expect(tpl_yaml['Ips'].size).to equal(1)
@@ -47,7 +45,7 @@ describe 'streaming-mysql-backup-client job' do
        end
     end
 
-    context('when cluster_ips are not provided') do
+    context('when backup_local_node_only is not set') do
        let(:spec) {{
         "cf-mysql-backup" => {
          'symmetric_key' => 'some-symmetric-key',

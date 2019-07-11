@@ -1,14 +1,13 @@
 <%=
   require 'yaml'
-
   backup_tool_link = link('mysql-backup-tool')
   username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
   password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
-  backup_addresses = backup_tool_link.instances.map { |instance| instance.address }
-
-  if_p('cf-mysql-backup.backup_ips') do |ips|
-    backup_addresses = ips
+  if p('cf-mysql-backup.backup_local_node_only')
+    backup_addresses = ['127.0.0.1']
+  else
+    backup_addresses = backup_tool_link.instances.map { |instance| instance.address }
   end
 
   galera_agent_port = nil
