@@ -213,6 +213,18 @@ var _ = Describe("BackupRestore", func() {
 			restoreBackups()
 			verifyData()
 		})
+
+		It("can successfully perform the backup when broken artifacts fill up tmp directory", func() {
+			setupBackupServer()
+			clientCfg := backupClientConfig(
+				"backup-server."+sessionID,
+				"secret",
+				credentials,
+			)
+			exitStatus, err := runStreamingMySQLBackupClientWithFullTmp(sessionID, clientCfg)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exitStatus).To(BeZero(), "expected running streaming MySQL Backup Client to exit successfully")
+		})
 	})
 
 	Context("when mutual TLS is enabled", func() {
@@ -393,6 +405,51 @@ func backupClientConfig(backupServerHost, encryptionPassword string, credentials
 	return string(jsonBytes)
 }
 
+func runStreamingMySQLBackupClientWithFullTmp(sessionID, config string) (exitStatus int, err error) {
+	container, err := dockertest.RunContainer(
+		dockerClient,
+		"backup-client."+sessionID,
+		dockertest.WithImage(DockerImage),
+		dockertest.WithNetwork(dockerNetwork),
+		dockertest.WithUser("root"),
+		dockertest.AddEnvVars(
+			"MYSQL_ALLOW_EMPTY_PASSWORD=1",
+			"CONFIG="+config,
+		),
+		dockertest.AddBinds(
+			streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client:delegated",
+			"restore-data."+sessionID+":/backups",
+		),
+		dockertest.WithCmd("--user=root"),
+	)
+
+	if err != nil {
+		return -1, err
+	}
+
+	fillUpTmp(container)
+
+	exec, err := dockerClient.CreateExec(docker.CreateExecOptions{
+		Container: container.ID,
+		Cmd: []string{
+			"streaming-mysql-backup-client",
+			"--config=" + config,
+		},
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+
+	if err != nil {
+		return -1, err
+	}
+
+	result, err := dockertest.RunExec(dockerClient, exec)
+	if err != nil {
+		return -1, err
+	}
+	return result.ExitCode, nil
+}
+
 func runStreamingMySQLBackupClient(sessionID, config string) (exitStatus int, err error) {
 	container, err := dockertest.RunContainer(
 		dockerClient,
@@ -480,4 +537,54 @@ func startMySQLServer(sessionID string) (*docker.Container, error) {
 		),
 		dockertest.WithCmd("--user=root"),
 	)
+}
+
+func runCmdInDocker(container *docker.Container, cmd []string) (*dockertest.ExecResult, error) {
+	exec, err := dockerClient.CreateExec(docker.CreateExecOptions{
+		Container:    container.ID,
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return dockertest.RunExec(dockerClient, exec)
+}
+
+// In order to simulate a full tmp directory which result from failed partial backups,
+// we fill up the tmp directory.
+
+func fillUpTmp(container *docker.Container) (*dockertest.ExecResult, error) {
+	mkdirCmd := []string{
+		"mkdir",
+		"-p",
+		"/tmp/mysql-backup-test/",
+	}
+	_, err := runCmdInDocker(container, mkdirCmd)
+	if err != nil {
+		return nil, err
+	}
+
+	// fallocate a big file to save the time for filling up disk using dd
+	fallocateCmd := []string{
+		"fallocate",
+		"-l",
+		"50G",
+		"/tmp/mysql-backup-test/placeholder-1",
+	}
+
+	_, err = runCmdInDocker(container, fallocateCmd)
+	if err != nil {
+		return nil, err
+	}
+
+	ddCmd := []string{
+		"dd",
+		"if=/dev/zero",
+		"of=/tmp/mysql-backup-test/placeholder-2 bs=128M",
+	}
+
+	return runCmdInDocker(container, ddCmd)
 }

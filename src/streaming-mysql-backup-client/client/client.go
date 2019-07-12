@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -119,6 +120,12 @@ func (this Client) finalMetadataLocation(index int) string {
 func (this *Client) Execute() error {
 	var allErrors MultiError
 	var ips []string
+
+	err := this.cleanTmpDirectories()
+	if err != nil {
+		return err
+	}
+
 	if this.config.BackupAllMasters {
 		ips = this.config.Ips
 	} else if this.config.BackupFromInactiveNode {
@@ -396,6 +403,30 @@ func (this *Client) cleanEncryptDirectory(ip string) error {
 	}
 
 	this.logDebug(ip, "Cleaned encrypt directory")
+	return nil
+}
+
+func (this *Client) cleanTmpDirectories() error {
+	this.logger.Debug( "Cleaning tmp directory", lager.Data{
+	  "tmpDirectory": this.config.TmpDir,
+	})
+
+	tmpDirs, err := filepath.Glob(filepath.Join(this.config.TmpDir, "mysql-backup*"))
+
+	if err != nil {
+		return err
+	}
+
+	for _, dir:= range(tmpDirs) {
+		err = os.RemoveAll(dir)
+		if err != nil {
+			this.logger.Error(fmt.Sprintf("Failed to remove tmp directory %s", dir), err)
+			return err
+		}
+	}
+
+	this.logger.Debug("Cleaned tmp directory")
+
 	return nil
 }
 
