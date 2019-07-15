@@ -59,6 +59,17 @@ var _ = Describe("BackupRestore", func() {
 		_, err := dockerClient.CreateVolume(docker.CreateVolumeOptions{
 			Name: "restore-data." + sessionID,
 		})
+
+		_, err = dockerClient.CreateVolume(docker.CreateVolumeOptions{
+			Name: "tmp-dir." + sessionID,
+			Driver: "local",
+			DriverOpts: map[string]string{
+				"type": "tmpfs",
+				"device": "tmpfs",
+				"o": "size=500m",
+			},
+		})
+
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -123,6 +134,12 @@ var _ = Describe("BackupRestore", func() {
 		}
 
 		if err := dockerClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{Name: "restore-data." + sessionID}); err != nil {
+			if err == docker.ErrNoSuchVolume {
+				errs = multierror.Append(errs, err)
+			}
+		}
+
+		if err := dockerClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{Name: "tmp-dir." + sessionID}); err != nil {
 			if err == docker.ErrNoSuchVolume {
 				errs = multierror.Append(errs, err)
 			}
@@ -419,6 +436,7 @@ func runStreamingMySQLBackupClientWithFullTmp(sessionID, config string) (exitSta
 		dockertest.AddBinds(
 			streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client:delegated",
 			"restore-data."+sessionID+":/backups",
+			"tmp-dir."+sessionID+":/tmp",
 		),
 		dockertest.WithCmd("--user=root"),
 	)
@@ -563,19 +581,6 @@ func fillUpTmp(container *docker.Container) (*dockertest.ExecResult, error) {
 		"/tmp/mysql-backup-test/",
 	}
 	_, err := runCmdInDocker(container, mkdirCmd)
-	if err != nil {
-		return nil, err
-	}
-
-	// fallocate a big file to save the time for filling up disk using dd
-	fallocateCmd := []string{
-		"fallocate",
-		"-l",
-		"50G",
-		"/tmp/mysql-backup-test/placeholder-1",
-	}
-
-	_, err = runCmdInDocker(container, fallocateCmd)
 	if err != nil {
 		return nil, err
 	}
