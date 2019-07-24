@@ -1,0 +1,7 @@
+---
+- type: replace
+  path: /releases/name=mysql-backup?
+  value:
+    name: mysql-backup
+    version: create
+    url: .
