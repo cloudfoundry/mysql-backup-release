@@ -41,6 +41,20 @@
           server_name: &server_name streaming_mysql_backup_tool
 
 - type: replace
+  path: /instance_groups/name=mysql/jobs/name=service-backup?
+  value:
+    name: service-backup
+    release: service-backup
+    properties:
+      service-backup:
+        exit_if_in_progress: true
+        source_folder: /var/vcap/store/mysql-backups
+        source_executable: /var/vcap/jobs/streaming-mysql-backup-client/bin/client
+        cleanup_executable: /bin/bash -c /var/vcap/jobs/streaming-mysql-backup-client/bin/cleanup-directories
+        cron_schedule: ((service_backup_cron_schedule))
+        destinations: ((service_backup_destinations))
+
+- type: replace
   path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-client?/properties/cf-mysql-backup/backup_local_node_only?
   value: true
 
