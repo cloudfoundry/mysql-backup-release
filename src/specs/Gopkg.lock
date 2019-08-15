@@ -37,6 +37,14 @@
   version = "v0.8.6"
 
 [[projects]]
+  digest = "1:d32b674066ec1b97e0858a2267bfe5b119bb97850e07215af2854a87493f58a9"
+  name = "github.com/cloudfoundry-incubator/cf-test-helpers"
+  packages = ["commandreporter"]
+  pruneopts = "UT"
+  revision = "a0c779441052fb945005396b04788d79a0d1947e"
+  version = "v1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:e48c63e818c67fbf3d7afe20bba33134ab1a5bf384847385384fd027652a5a96"
   name = "github.com/containerd/continuity"
@@ -281,11 +289,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b92fcd8fc1e787effcde0996128b450347754c5336600868e5f10b44a8a8af12"
+  digest = "1:77164da1e7e53ebb470d1ba28d31f8e71f404dc16d47670fdfe0df37e013991f"
   name = "github.com/pivotal/mysql-test-utils"
-  packages = ["dockertest"]
+  packages = [
+    "dockertest",
+    "testhelpers",
+  ]
   pruneopts = "UT"
-  revision = "4c9efa2f77df50a788cfe43d79619b6c8a6d6147"
+  revision = "5641fb366f99a7c5bfc1924f2f5291d7d9c1ec70"
 
 [[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
@@ -425,6 +436,7 @@
     "github.com/onsi/gomega/gbytes",
     "github.com/onsi/gomega/gexec",
     "github.com/pivotal/mysql-test-utils/dockertest",
+    "github.com/pivotal/mysql-test-utils/testhelpers",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

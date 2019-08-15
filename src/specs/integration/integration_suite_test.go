@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal/mysql-test-utils/dockertest"
+	"github.com/pivotal/mysql-test-utils/testhelpers"
 )
 
 func TestIntegration(t *testing.T) {
@@ -81,5 +83,11 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	if dockerNetwork != nil {
 		Expect(dockertest.RemoveNetwork(dockerClient, dockerNetwork)).To(Succeed())
+	}
+})
+
+var _ = JustAfterEach(func() {
+	if CurrentGinkgoTestDescription().Failed {
+		fmt.Fprint(GinkgoWriter, testhelpers.TestFailureMessage)
 	}
 })
