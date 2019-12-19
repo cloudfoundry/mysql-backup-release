@@ -52,3 +52,7 @@
 [[override]]
   branch = "master"
   name = "github.com/square/certstrap"
+
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
