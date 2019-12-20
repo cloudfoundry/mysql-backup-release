@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,10 +13,14 @@ import (
 
 	"code.cloudfoundry.org/tlsconfig"
 	"code.cloudfoundry.org/tlsconfig/certtest"
+	"github.com/onsi/gomega/gbytes"
+	"gopkg.in/yaml.v2"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+
+	"streaming-mysql-backup-tool/config"
 )
 
 func saveScript(scriptContents string) string {
@@ -55,12 +60,13 @@ var _ = Describe("Main", func() {
 		serverCertPEM []byte
 		serverKeyPEM  []byte
 
-		backupServerConfig string
-		pidFile            string
-		backupServerPort   int
-		backupServerCmd    string
-		clientCA           string
-		enableMutualTLS    bool
+		backupServerConfig       string
+		pidFile                  string
+		backupServerPort         int
+		backupServerCmd          string
+		clientCA                 string
+		enableMutualTLS          bool
+		requiredClientIdentities []string
 	)
 
 	BeforeEach(func() {
@@ -80,34 +86,29 @@ var _ = Describe("Main", func() {
 		backupServerPort = int(49000 + GinkgoParallelNode())
 		backupServerCmd = fmt.Sprintf("echo -n %s", expectedResponseBody)
 		enableMutualTLS = false
+		requiredClientIdentities = nil
 	})
 
 	JustBeforeEach(func() {
-		configurationTemplate := `{
-			"Port": %d,
-			"Command": %q,
-			"PidFile": %q,
-			"Credentials": {
-				"Username": "username",
-				"Password": "password",
+		configYAML, err := yaml.Marshal(&config.Config{
+			Port:    backupServerPort,
+			Command: backupServerCmd,
+			PidFile: pidFile,
+			Credentials: config.Credentials{
+				Username: "username",
+				Password: "password",
 			},
-			"TLS": {
-				"ServerCert": %q,
-				"ServerKey": %q,
-				"EnableMutualTLS": %t,
-				"ClientCA": %q,
-			}
-		}`
+			TLS: config.TLSConfig{
+				ServerCert:               string(serverCertPEM),
+				ServerKey:                string(serverKeyPEM),
+				EnableMutualTLS:          enableMutualTLS,
+				ClientCA:                 clientCA,
+				RequiredClientIdentities: requiredClientIdentities,
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
 
-		backupServerConfig = fmt.Sprintf(configurationTemplate,
-			backupServerPort,
-			backupServerCmd,
-			pidFile,
-			serverCertPEM,
-			serverKeyPEM,
-			enableMutualTLS,
-			clientCA,
-		)
+		backupServerConfig = string(configYAML)
 	})
 
 	AfterEach(func() {
@@ -356,7 +357,7 @@ var _ = Describe("Main", func() {
 			clientCA = string(clientCABytes)
 		})
 
-		Context("When there is a problem with the client's certificate, such as", func() {
+		When("there is a problem with the client's certificate, such as", func() {
 			JustBeforeEach(func() {
 				backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
 			})
@@ -368,7 +369,7 @@ var _ = Describe("Main", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			Context("When the client does not provide a certificate", func() {
+			When("the client does not provide a certificate", func() {
 				JustBeforeEach(func() {
 					serverCertPool, err := serverAuthority.CertPool()
 					Expect(err).ToNot(HaveOccurred())
@@ -396,7 +397,7 @@ var _ = Describe("Main", func() {
 				})
 			})
 
-			Context("When the client provides a certificate the server does not trust", func() {
+			When("the client provides a certificate the server does not trust", func() {
 				JustBeforeEach(func() {
 					clientCertConfig, err := serverAuthority.BuildSignedCertificate("untrusted-client-cert")
 					Expect(err).NotTo(HaveOccurred())
@@ -431,11 +432,67 @@ var _ = Describe("Main", func() {
 					}).Should(MatchError(ContainSubstring("tls: bad certificate")))
 				})
 			})
+
+			When("the client provides a trusted certificate with an invalid identity", func() {
+				var backupServerStderrLogs *gbytes.Buffer
+
+				BeforeEach(func() {
+					backupServerStderrLogs = gbytes.NewBuffer()
+					requiredClientIdentities = []string{"clientCert"}
+				})
+
+				JustBeforeEach(func() {
+					clientCertConfig, err := clientAuthority.BuildSignedCertificate("invalid-identity", certtest.WithDomains("invalid-identity"))
+					Expect(err).ToNot(HaveOccurred())
+
+					backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
+					request, err = http.NewRequest("GET", backupUrl, nil)
+					Expect(err).ToNot(HaveOccurred())
+					request.SetBasicAuth("username", "password")
+
+					clientIdentity, err := clientCertConfig.TLSCertificate()
+					Expect(err).ToNot(HaveOccurred())
+
+					serverCertPool, err := serverAuthority.CertPool()
+					Expect(err).ToNot(HaveOccurred())
+
+					mTLSClientConfig, err := tlsconfig.Build(
+						tlsconfig.WithIdentity(clientIdentity),
+					).Client(
+						tlsconfig.WithAuthority(serverCertPool),
+						tlsconfig.WithServerName("localhost"),
+					)
+
+					httpClient = &http.Client{
+						Transport: &http.Transport{
+							TLSClientConfig: mTLSClientConfig,
+						},
+					}
+
+					command = exec.Command(pathToMainBinary, fmt.Sprintf("-config=%s", backupServerConfig))
+					session, err = gexec.Start(command, GinkgoWriter, io.MultiWriter(GinkgoWriter, backupServerStderrLogs))
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				It("Throws a bad certificate error", func() {
+					Eventually(func() error {
+						_, err := httpClient.Get(backupUrl)
+						return err
+					}, "5s").Should(MatchError(ContainSubstring("tls: bad certificate")))
+
+					Eventually(backupServerStderrLogs, "1m").
+						Should(gbytes.Say(`invalid client identity in presented client certificate`))
+				})
+			})
 		})
 
-		Context("When TLS options are configured correctly", func() {
+		When("TLS options are configured correctly", func() {
+			BeforeEach(func() {
+				requiredClientIdentities = []string{"clientCert"}
+			})
+
 			JustBeforeEach(func() {
-				clientCertConfig, err := clientAuthority.BuildSignedCertificate("clientCert")
+				clientCertConfig, err := clientAuthority.BuildSignedCertificate("clientCert", certtest.WithDomains("clientCert"))
 				Expect(err).ToNot(HaveOccurred())
 
 				backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os/exec"
 	"strings"
+	"time"
 
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/lager"
@@ -29,12 +30,15 @@ type Credentials struct {
 }
 
 type TLSConfig struct {
-	EnableMutualTLS bool        `yaml:"EnableMutualTLS"`
-	ServerCert      string      `yaml:"ServerCert" validate:"nonzero"`
-	ServerKey       string      `yaml:"ServerKey" validate:"nonzero"`
-	ClientCA        string      `yaml:"ClientCA" validate:"nonzero"`
-	Config          *tls.Config `yaml:"-"`
+	EnableMutualTLS          bool        `yaml:"EnableMutualTLS"`
+	RequiredClientIdentities []string    `yaml:"RequiredClientIdentities"`
+	ServerCert               string      `yaml:"ServerCert" validate:"nonzero"`
+	ServerKey                string      `yaml:"ServerKey" validate:"nonzero"`
+	ClientCA                 string      `yaml:"ClientCA" validate:"nonzero"`
+	Config                   *tls.Config `yaml:"-"`
 }
+
+type ClientCertificateVerifierFunc func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 
 func (t *TLSConfig) unmarshalTLSConfig() error {
 	serverCert, err := tls.X509KeyPair([]byte(t.ServerCert), []byte(t.ServerKey))
@@ -49,20 +53,44 @@ func (t *TLSConfig) unmarshalTLSConfig() error {
 
 	var configOptions []tlsconfig.ServerOption
 
-	if t.EnableMutualTLS {
-		clientCA := x509.NewCertPool()
+	var verifyPeerCertificate ClientCertificateVerifierFunc
 
-		if ok := clientCA.AppendCertsFromPEM([]byte(t.ClientCA)); !ok {
+	if t.EnableMutualTLS {
+		clientCAPool := x509.NewCertPool()
+
+		if ok := clientCAPool.AppendCertsFromPEM([]byte(t.ClientCA)); !ok {
 			return errors.New(`unable to load client CA certificate`)
 		}
 
-		configOptions = append(configOptions, tlsconfig.WithClientAuthentication(clientCA))
+		configOptions = append(configOptions,
+			tlsconfig.WithClientAuthentication(clientCAPool),
+		)
+
+		verifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			for _, name := range t.RequiredClientIdentities {
+				opts := x509.VerifyOptions{
+					Roots:         clientCAPool,
+					CurrentTime:   time.Now(),
+					Intermediates: x509.NewCertPool(),
+					KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+					DNSName:       name,
+				}
+				if _, err := verifiedChains[0][0].Verify(opts); err == nil {
+					return nil
+				}
+			}
+
+			return errors.New("invalid client identity in presented client certificate")
+		}
+
 	}
 
 	serverTLSConfig, err := certConfig.Server(configOptions...)
 	if err != nil {
 		return errors.Wrap(err, `failed to build server TLS certConfig`)
 	}
+
+	serverTLSConfig.VerifyPeerCertificate = verifyPeerCertificate
 
 	t.Config = serverTLSConfig
 

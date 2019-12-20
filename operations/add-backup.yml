@@ -95,3 +95,5 @@
     options:
       ca: cf_mysql_backup_ca
       common_name: *server_name
+      extended_key_usage:
+      - client_auth

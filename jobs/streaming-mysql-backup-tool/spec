@@ -45,6 +45,8 @@ properties:
   cf-mysql-backup.tls.client_ca:
     description: 'CA for validating client certs'
     default: ''
+  cf-mysql-backup.tls.client_hostnames:
+    description: "Acceptable identities in the SAN of the backup client certificate"
   cf-mysql-backup.tls.server_certificate:
     description: 'certificate'
   cf-mysql-backup.tls.server_key:

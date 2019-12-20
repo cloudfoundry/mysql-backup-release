@@ -25,7 +25,13 @@
   }
 
   if config["TLS"]["EnableMutualTLS"]
-    config["TLS"]["ClientCA"] = p("cf-mysql-backup.tls.client_ca")
+		config["TLS"]["ClientCA"] = p("cf-mysql-backup.tls.client_ca")
+
+		if !p('cf-mysql-backup.tls.client_hostnames', []).empty?
+			config["TLS"]["RequiredClientIdentities"] = p('cf-mysql-backup.tls.client_hostnames')
+		else
+			raise "'cf-mysql-backup.tls.client_hostnames' must be configured when enable_mutual_tls is configured!"
+		end
   end
 
   YAML.dump(config)

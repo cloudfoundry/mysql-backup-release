@@ -1,0 +1,4 @@
+---
+- type: replace
+  path: /variables/name=cf_mysql_backup_client_cert/options/common_name
+  value: invalid-client-certificate-name

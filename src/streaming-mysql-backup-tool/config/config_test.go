@@ -165,6 +165,7 @@ var _ = Describe("Config", func() {
 
 			Expect(rootConfig.TLS.Config).ToNot(BeNil())
 			Expect(rootConfig.TLS.Config.ClientAuth).To(Equal(tls.RequireAndVerifyClientCert), "Expected ClientAuth value of tls.RequireAndVerifyClientCert")
+			Expect(rootConfig.TLS.Config.VerifyPeerCertificate).NotTo(BeNil())
 		})
 
 		Context("When client CA is invalid", func() {

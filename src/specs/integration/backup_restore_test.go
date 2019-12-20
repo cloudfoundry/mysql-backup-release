@@ -20,11 +20,12 @@ import (
 )
 
 type TestCredentials struct {
-	Username        string
-	Password        string
-	ClientTLS       CertificateInfo
-	ServerTLS       CertificateInfo
-	EnableMutualTLS bool
+	Username                 string
+	Password                 string
+	ClientTLS                CertificateInfo
+	ServerTLS                CertificateInfo
+	EnableMutualTLS          bool
+	RequiredClientIdentities []string
 }
 
 type CertificateInfo struct {
@@ -61,12 +62,12 @@ var _ = Describe("BackupRestore", func() {
 		})
 
 		_, err = dockerClient.CreateVolume(docker.CreateVolumeOptions{
-			Name: "tmp-dir." + sessionID,
+			Name:   "tmp-dir." + sessionID,
 			Driver: "local",
 			DriverOpts: map[string]string{
-				"type": "tmpfs",
+				"type":   "tmpfs",
 				"device": "tmpfs",
-				"o": "size=500m",
+				"o":      "size=500m",
 			},
 		})
 
@@ -247,6 +248,7 @@ var _ = Describe("BackupRestore", func() {
 	Context("when mutual TLS is enabled", func() {
 		BeforeEach(func() {
 			credentials.EnableMutualTLS = true
+			credentials.RequiredClientIdentities = []string{"client certificate"}
 
 			cert, err := tls.X509KeyPair([]byte(credentials.ClientTLS.Cert), []byte(credentials.ClientTLS.Key))
 			Expect(err).NotTo(HaveOccurred())
@@ -324,7 +326,8 @@ func createBackupCertificates(serverName string, credentials *TestCredentials) {
 	clientCAPEM, err := clientAuthority.CertificatePEM()
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	clientCertCtx, err := clientAuthority.BuildSignedCertificate("client certificate")
+	clientCertCtx, err := clientAuthority.BuildSignedCertificate("client certificate",
+		certtest.WithDomains("client certificate"))
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	clientCertPEM, clientKeyPEM, err := clientCertCtx.CertificatePEMAndPrivateKey()
@@ -371,8 +374,9 @@ func backupServerConfig(credentials TestCredentials) string {
 	if credentials.EnableMutualTLS {
 		mTlsConfig := map[string]interface{}{
 			"TLS": map[string]interface{}{
-				"ClientCA":        credentials.ClientTLS.CA,
-				"EnableMutualTLS": true,
+				"ClientCA":                 credentials.ClientTLS.CA,
+				"EnableMutualTLS":          true,
+				"RequiredClientIdentities": credentials.RequiredClientIdentities,
 			},
 		}
 		ExpectWithOffset(1, mergo.Merge(&cfg, mTlsConfig)).To(Succeed())

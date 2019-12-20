@@ -4,6 +4,10 @@
   value: true
 
 - type: replace
+  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/enable_mutual_tls?
+  value: true
+
+- type: replace
   path: /instance_groups/name=backup-prepare/jobs/name=streaming-mysql-backup-client/properties/cf-mysql-backup/tls/client_certificate?
   value: ((cf_mysql_backup_client_cert.certificate))
 
@@ -12,18 +16,20 @@
   value: ((cf_mysql_backup_client_cert.private_key))
 
 - type: replace
-  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/enable_mutual_tls?
-  value: true
-
-- type: replace
   path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/tls/client_ca?
   value: ((cf_mysql_backup_client_cert.ca))
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/tls/client_hostnames?
+  value:
+  - streaming_mysql_backup_tool
 
 - type: replace
   path: /variables/name=cf_mysql_backup_client_ca?
   value:
     name: cf_mysql_backup_client_ca
     type: certificate
+    update_mode: converge
     options:
       is_ca: true
       common_name: generated-backup-client-ca
@@ -33,6 +39,9 @@
   value:
     name: cf_mysql_backup_client_cert
     type: certificate
+    update_mode: converge
     options:
       ca: cf_mysql_backup_client_ca
       common_name: streaming_mysql_backup_tool
+      alternative_names:
+      - streaming_mysql_backup_tool
