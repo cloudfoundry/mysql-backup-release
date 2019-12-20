@@ -45,3 +45,5 @@
       common_name: streaming_mysql_backup_tool
       alternative_names:
       - streaming_mysql_backup_tool
+      extended_key_usage:
+      - client_auth
