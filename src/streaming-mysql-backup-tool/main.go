@@ -7,12 +7,13 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
+
 	"streaming-mysql-backup-tool/api"
 	"streaming-mysql-backup-tool/collector"
 	c "streaming-mysql-backup-tool/config"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
 )
 
 func main() {
@@ -27,9 +28,14 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	wrappedMux := middleware.Chain{
-		middleware.NewBasicAuth(config.Credentials.Username, config.Credentials.Password),
-	}.Wrap(mux)
+	var wrappedMux http.Handler
+	if config.TLS.EnableMutualTLS {
+		wrappedMux = mux
+	} else {
+		wrappedMux = middleware.Chain{
+			middleware.NewBasicAuth(config.Credentials.Username, config.Credentials.Password),
+		}.Wrap(mux)
+	}
 
 	backupHandler := &api.BackupHandler{
 		CommandGenerator:   config.Cmd,

@@ -1,8 +1,6 @@
 <%=
   require 'yaml'
   backup_tool_link = link('mysql-backup-tool')
-  username = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username')
-  password = backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
 
   if p('cf-mysql-backup.backup_local_node_only')
     backup_addresses = ['127.0.0.1']
@@ -19,6 +17,15 @@
     end
   end
 
+  if !p('cf-mysql-backup.enable_mutual_tls')
+    credentials = {
+      "Username" => backup_tool_link.p('cf-mysql-backup.endpoint_credentials.username'),
+      "Password" => backup_tool_link.p('cf-mysql-backup.endpoint_credentials.password')
+    }
+  else
+    credentials = {}
+  end
+
   config = {
     "Ips" => backup_addresses,
     "BackupServerPort" => p('cf-mysql-backup.backup-server.port'),
@@ -32,10 +39,7 @@
       "EnableMutualTLS" => p('cf-mysql-backup.enable_mutual_tls'),
       "ServerCACert" => p("cf-mysql-backup.tls.ca_certificate"),
     },
-    "Credentials" => {
-      "Username" => username,
-      "Password" => password,
-    },
+    "Credentials" => credentials,
     "MetadataFields" => {
       "compressed" => "Y",
       "encrypted" => "Y",

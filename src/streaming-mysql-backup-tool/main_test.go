@@ -498,7 +498,6 @@ var _ = Describe("Main", func() {
 				backupUrl = fmt.Sprintf("https://localhost:%d/backup", backupServerPort)
 				request, err = http.NewRequest("GET", backupUrl, nil)
 				Expect(err).ToNot(HaveOccurred())
-				request.SetBasicAuth("username", "password")
 
 				clientIdentity, err := clientCertConfig.TLSCertificate()
 				Expect(err).ToNot(HaveOccurred())
@@ -647,39 +646,14 @@ var _ = Describe("Main", func() {
 				})
 
 				Describe("Basic auth credentials", func() {
-					It("Expects Basic Auth credentials", func() {
-						resp, err := httpClient.Get(backupUrl)
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
-						Expect(resp.Header.Get("WWW-Authenticate")).To(Equal(`Basic realm="Authorization Required"`))
-
-						body, err := ioutil.ReadAll(resp.Body)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
-					})
-
-					It("Accepts good Basic Auth credentials", func() {
+					It("Accepts bad Basic Auth credentials", func() {
 						req, err := http.NewRequest("GET", backupUrl, nil)
 						Expect(err).ToNot(HaveOccurred())
-						req.SetBasicAuth("username", "password")
+						req.SetBasicAuth("bad_username", "bad_password")
 						resp, err := httpClient.Do(req)
 
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resp.StatusCode).To(Equal(http.StatusOK))
-					})
-
-					It("Does not accept bad Basic Auth credentials", func() {
-						req, err := http.NewRequest("GET", backupUrl, nil)
-						Expect(err).ToNot(HaveOccurred())
-						req.SetBasicAuth("bad_username", "bad_password")
-
-						resp, err := httpClient.Do(req)
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
-
-						body, err := ioutil.ReadAll(resp.Body)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(body).ToNot(ContainSubstring(expectedResponseBody))
 					})
 				})
 			})
