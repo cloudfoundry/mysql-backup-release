@@ -361,10 +361,6 @@ func backupServerConfig(credentials TestCredentials) string {
 		"PidFile": "/tmp/streaming-mysql-backup-tool.pid",
 		"Command": "xtrabackup --user=root --backup --stream=tar --target-dir=/tmp",
 		"Port":    8081,
-		"Credentials": map[string]interface{}{
-			"Username": credentials.Username,
-			"Password": credentials.Password,
-		},
 		"TLS": map[string]interface{}{
 			"ServerCert": string(credentials.ServerTLS.Cert),
 			"ServerKey":  string(credentials.ServerTLS.Key),
@@ -380,6 +376,14 @@ func backupServerConfig(credentials TestCredentials) string {
 			},
 		}
 		ExpectWithOffset(1, mergo.Merge(&cfg, mTlsConfig)).To(Succeed())
+	} else {
+		credentialConfig := map[string]interface{}{
+			"Credentials": map[string]interface{}{
+				"Username": credentials.Username,
+				"Password": credentials.Password,
+			},
+		}
+		ExpectWithOffset(1, mergo.Merge(&cfg, credentialConfig)).To(Succeed())
 	}
 
 	jsonBytes, err := json.Marshal(cfg)
@@ -401,10 +405,6 @@ func backupClientConfig(backupServerHost, encryptionPassword string, credentials
 			"EnableMutualTLS": false,
 			"ServerCACert":    credentials.ServerTLS.CA,
 		},
-		"Credentials": map[string]interface{}{
-			"Username": credentials.Username,
-			"Password": credentials.Password,
-		},
 		"MetadataFields": map[string]interface{}{
 			"compressed": "Y",
 			"encrypted":  "Y",
@@ -419,6 +419,14 @@ func backupClientConfig(backupServerHost, encryptionPassword string, credentials
 			},
 		}
 		ExpectWithOffset(1, mergo.Merge(&cfg, mTlsConfig)).To(Succeed())
+	} else {
+		credentialConfig := map[string]interface{}{
+			"Credentials": map[string]interface{}{
+				"Username": credentials.Username,
+				"Password": credentials.Password,
+			},
+		}
+		ExpectWithOffset(1, mergo.Merge(&cfg, credentialConfig)).To(Succeed())
 	}
 	jsonBytes, err := json.Marshal(cfg)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
