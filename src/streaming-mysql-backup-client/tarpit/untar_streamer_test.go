@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"streaming-mysql-backup-client/tarpit"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 
 	"bytes"
 
