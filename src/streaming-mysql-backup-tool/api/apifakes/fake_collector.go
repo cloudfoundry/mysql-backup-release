@@ -4,7 +4,7 @@ package apifakes
 import (
 	"sync"
 
-	"streaming-mysql-backup-tool/api"
+	"github.com/cloudfoundry/streaming-mysql-backup-tool/api"
 )
 
 type FakeCollector struct {
