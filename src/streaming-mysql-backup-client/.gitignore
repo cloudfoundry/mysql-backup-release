@@ -126,5 +126,4 @@ Session.vim
 ### Vagrant ###
 .vagrant/
 
-*fakes
 *.coverprofile
