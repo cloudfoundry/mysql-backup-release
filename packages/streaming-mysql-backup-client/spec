@@ -5,4 +5,4 @@ dependencies:
 - golang-1.13-linux
 
 files:
-- streaming-mysql-backup-client/**
+- streaming-mysql-backup-client/**/*

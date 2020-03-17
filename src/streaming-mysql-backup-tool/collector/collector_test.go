@@ -6,8 +6,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/cloudfoundry/streaming-mysql-backup-tool/collector"
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/collector/collectorfakes"
+	. "streaming-mysql-backup-tool/collector"
+	"streaming-mysql-backup-tool/collector/collectorfakes"
 )
 
 var _ = Describe("Collector", func() {

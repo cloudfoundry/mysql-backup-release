@@ -1,7 +1,7 @@
 package fileutils_test
 
 import (
-	"github.com/cloudfoundry/streaming-mysql-backup-client/fileutils"
+	"streaming-mysql-backup-client/fileutils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

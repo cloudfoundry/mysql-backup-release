@@ -4,7 +4,7 @@ package collectorfakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/collector"
+	"streaming-mysql-backup-tool/collector"
 )
 
 type FakeScriptExecutor struct {

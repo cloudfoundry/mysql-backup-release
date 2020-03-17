@@ -9,9 +9,9 @@ import (
 
 	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/api"
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/collector"
-	c "github.com/cloudfoundry/streaming-mysql-backup-tool/config"
+	"streaming-mysql-backup-tool/api"
+	"streaming-mysql-backup-tool/collector"
+	c "streaming-mysql-backup-tool/config"
 
 	"code.cloudfoundry.org/lager"
 )

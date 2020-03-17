@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/config"
+	"streaming-mysql-backup-tool/config"
 )
 
 func saveScript(scriptContents string) string {

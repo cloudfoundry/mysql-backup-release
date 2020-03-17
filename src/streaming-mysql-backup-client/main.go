@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	c "github.com/cloudfoundry/streaming-mysql-backup-client/client"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
+	c "streaming-mysql-backup-client/client"
+	"streaming-mysql-backup-client/config"
 )
 
 func main() {

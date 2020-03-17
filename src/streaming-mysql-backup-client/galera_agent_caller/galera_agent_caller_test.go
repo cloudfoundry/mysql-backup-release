@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
+	"streaming-mysql-backup-client/galera_agent_caller"
 	"strings"
 )
 

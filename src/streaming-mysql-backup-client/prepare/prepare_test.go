@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-client/prepare"
+	"streaming-mysql-backup-client/prepare"
 )
 
 var _ = Describe("Prepare Command", func() {

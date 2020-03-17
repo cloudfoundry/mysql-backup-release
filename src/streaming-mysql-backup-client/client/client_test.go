@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
+	"streaming-mysql-backup-client/config"
+	"streaming-mysql-backup-client/download"
 
 	"io/ioutil"
 	"os"
@@ -17,9 +17,9 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"errors"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/client"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/client/clientfakes"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
+	"streaming-mysql-backup-client/client"
+	"streaming-mysql-backup-client/client/clientfakes"
+	"streaming-mysql-backup-client/tarpit"
 )
 
 var _ = Describe("Streaming MySQL Backup Client", func() {

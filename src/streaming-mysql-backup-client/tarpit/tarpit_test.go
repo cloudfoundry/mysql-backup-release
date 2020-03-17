@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
+	"streaming-mysql-backup-client/tarpit"
 )
 
 var _ = Describe("NewOSXTarClient", func() {

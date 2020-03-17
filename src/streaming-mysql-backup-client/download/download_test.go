@@ -16,10 +16,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-client/clock/fakes"
+	"streaming-mysql-backup-client/clock/fakes"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
+	"streaming-mysql-backup-client/config"
+	"streaming-mysql-backup-client/download"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

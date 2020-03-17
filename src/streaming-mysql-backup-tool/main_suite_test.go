@@ -25,7 +25,7 @@ func TestStreamingBackup(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToMainBinary, err = gexec.Build("github.com/cloudfoundry/streaming-mysql-backup-tool")
+	pathToMainBinary, err = gexec.Build("streaming-mysql-backup-tool")
 	Expect(err).ShouldNot(HaveOccurred())
 
 	configPath = createTmpFile("config").Name()

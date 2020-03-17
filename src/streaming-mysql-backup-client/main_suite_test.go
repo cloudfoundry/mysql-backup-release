@@ -17,7 +17,7 @@ func TestStreamingBackupClient(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToMainBinary, err = gexec.Build("github.com/cloudfoundry/streaming-mysql-backup-client", "-mod=vendor")
+	pathToMainBinary, err = gexec.Build("streaming-mysql-backup-client")
 	Expect(err).ToNot(HaveOccurred())
 })
 
