@@ -6,7 +6,7 @@ import (
 	"os/exec"
 
 	"code.cloudfoundry.org/lager"
-	"streaming-mysql-backup-tool/commandexecutor"
+	"github.com/cloudfoundry/streaming-mysql-backup-tool/commandexecutor"
 )
 
 var TrailerKey = http.CanonicalHeaderKey("X-Backup-Error")

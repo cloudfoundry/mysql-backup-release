@@ -3,7 +3,7 @@ package config_test
 import (
 	"code.cloudfoundry.org/tlsconfig/certtest"
 	"fmt"
-	configPkg "streaming-mysql-backup-client/config"
+	configPkg "github.com/cloudfoundry/streaming-mysql-backup-client/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

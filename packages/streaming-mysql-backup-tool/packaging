@@ -3,9 +3,10 @@
 set -eux
 
 source /var/vcap/packages/golang-1.13-linux/bosh/compile.env
-mkdir -p ${BOSH_INSTALL_TARGET}/bin
-mkdir -p ${GOPATH}/src
 
-mv streaming-mysql-backup-tool ${GOPATH}/src
+export GOBIN="${BOSH_INSTALL_TARGET}/bin"
+export GOFLAGS="-mod=vendor"
 
-go build -o ${BOSH_INSTALL_TARGET}/bin/streaming-mysql-backup-tool streaming-mysql-backup-tool
+cd streaming-mysql-backup-tool
+  go install github.com/cloudfoundry/streaming-mysql-backup-tool
+cd -

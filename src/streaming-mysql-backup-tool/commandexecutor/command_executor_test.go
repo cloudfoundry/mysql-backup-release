@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
-	. "streaming-mysql-backup-tool/commandexecutor"
-	"streaming-mysql-backup-tool/commandexecutor/commandexecutorfakes"
+	. "github.com/cloudfoundry/streaming-mysql-backup-tool/commandexecutor"
+	"github.com/cloudfoundry/streaming-mysql-backup-tool/commandexecutor/commandexecutorfakes"
 )
 
 var _ = Describe("CommandExecutor", func() {

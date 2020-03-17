@@ -11,8 +11,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
-	"streaming-mysql-backup-client/clock"
-	"streaming-mysql-backup-client/config"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/clock"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
 )
 
 type DownloadBackup interface {

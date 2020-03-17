@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"streaming-mysql-backup-tool/config"
+	"github.com/cloudfoundry/streaming-mysql-backup-tool/config"
 )
 
 var _ = Describe("Config", func() {

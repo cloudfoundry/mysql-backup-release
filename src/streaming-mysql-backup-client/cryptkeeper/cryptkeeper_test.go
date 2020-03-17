@@ -1,7 +1,7 @@
 package cryptkeeper_test
 
 import (
-	"streaming-mysql-backup-client/cryptkeeper"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/cryptkeeper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
