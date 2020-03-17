@@ -57,7 +57,7 @@ var _ = BeforeSuite(func() {
 	Expect(os.Setenv("TMPDIR", "/tmp")).To(Succeed())
 
 	streamingMySQLBackupToolBinPath, err = gexec.BuildWithEnvironment(
-		"streaming-mysql-backup-tool",
+		"github.com/cloudfoundry/streaming-mysql-backup-tool",
 		[]string{
 			"GOOS=linux",
 			"GOARCH=amd64",
@@ -67,7 +67,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	streamingMySQLBackupClientBinPath, err = gexec.BuildWithEnvironment(
-		"streaming-mysql-backup-client",
+		"github.com/cloudfoundry/streaming-mysql-backup-client",
 		[]string{
 			"GOOS=linux",
 			"GOARCH=amd64",
