@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -44,6 +45,7 @@ var _ = BeforeSuite(func() {
 	log.SetOutput(GinkgoWriter)
 
 	var err error
+	var cwd string
 
 	dockerClient, err = docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
@@ -56,6 +58,13 @@ var _ = BeforeSuite(func() {
 	// Default tmpdir on OS X cannot be mapped into a docker container, so use /tmp instead
 	Expect(os.Setenv("TMPDIR", "/tmp")).To(Succeed())
 
+	fixturesPath, err = filepath.Abs("fixtures")
+	Expect(err).NotTo(HaveOccurred())
+
+	cwd, err = os.Getwd()
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(os.Chdir(path.Join(cwd, "../../streaming-mysql-backup-tool"))).To(Succeed())
 	streamingMySQLBackupToolBinPath, err = gexec.BuildWithEnvironment(
 		"github.com/cloudfoundry/streaming-mysql-backup-tool",
 		[]string{
@@ -66,6 +75,7 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
+	Expect(os.Chdir(path.Join(cwd, "../../streaming-mysql-backup-client"))).To(Succeed())
 	streamingMySQLBackupClientBinPath, err = gexec.BuildWithEnvironment(
 		"github.com/cloudfoundry/streaming-mysql-backup-client",
 		[]string{
@@ -75,9 +85,7 @@ var _ = BeforeSuite(func() {
 		},
 	)
 	Expect(err).NotTo(HaveOccurred())
-
-	fixturesPath, err = filepath.Abs("fixtures")
-	Expect(err).NotTo(HaveOccurred())
+	Expect(os.Chdir(cwd)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {
