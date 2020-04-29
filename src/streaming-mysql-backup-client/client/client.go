@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,16 +12,15 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+
 	"github.com/cloudfoundry/streaming-mysql-backup-client/clock"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/prepare"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
-
-	"errors"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/cryptkeeper"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/fileutils"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/prepare"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 )
 
 type MultiError []error
