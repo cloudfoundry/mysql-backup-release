@@ -297,7 +297,7 @@ var _ = Describe("BackupRestore", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(buf).To(gbytes.Say(`Get "https://backup-server.%s:8081/backup": remote error: tls: bad certificate`, sessionID))
+				Expect(buf).To(gbytes.Say(`Get "?https://backup-server.%s:8081/backup"?: remote error: tls: bad certificate`, sessionID))
 			})
 		})
 	})
