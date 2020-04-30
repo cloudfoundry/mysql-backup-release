@@ -14,7 +14,7 @@ import (
 )
 
 type Config struct {
-	Ips                    []string    `yaml:"Ips" validate:"nonzero"`
+	Instances              []Instance  `yaml:"Instances" validate:"nonzero"`
 	BackupServerPort       int         `yaml:"BackupServerPort"`
 	BackupAllMasters       bool        `yaml:"BackupAllMasters"`
 	BackupFromInactiveNode bool        `yaml:"BackupFromInactiveNode"`
@@ -26,6 +26,11 @@ type Config struct {
 	TLS                    TLSConfig   `yaml:"TLS"`
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
+}
+
+type Instance struct {
+	Address string `yaml:"Address"`
+	UUID    string `yaml:"UUID"`
 }
 
 type Credentials struct {

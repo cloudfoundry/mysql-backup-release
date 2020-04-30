@@ -93,8 +93,8 @@ func NewClient(config config.Config, tarClient *tarpit.TarClient, backupPreparer
 	return client
 }
 
-func (c Client) artifactName(index int) string {
-	return fmt.Sprintf("mysql-backup-%d-%d", c.version, index)
+func (c Client) artifactName(uuid string) string {
+	return fmt.Sprintf("mysql-backup-%d-%s", c.version, uuid)
 }
 
 func (c Client) downloadedBackupLocation() string {
@@ -105,21 +105,21 @@ func (c Client) preparedBackupLocation() string {
 	return path.Join(c.encryptDirectory, "prepared-backup.tar")
 }
 
-func (c Client) encryptedBackupLocation(index int) string {
-	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.tar.gpg", c.artifactName(index)))
+func (c Client) encryptedBackupLocation(uuid string) string {
+	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.tar.gpg", c.artifactName(uuid)))
 }
 
 func (c Client) originalMetadataLocation() string {
 	return path.Join(c.prepareDirectory, "xtrabackup_info")
 }
 
-func (c Client) finalMetadataLocation(index int) string {
-	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.txt", c.artifactName(index)))
+func (c Client) finalMetadataLocation(uuid string) string {
+	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.txt", c.artifactName(uuid)))
 }
 
 func (c *Client) Execute() error {
 	var allErrors MultiError
-	var ips []string
+	var instances []config.Instance
 
 	err := c.cleanTmpDirectories()
 	if err != nil {
@@ -127,59 +127,60 @@ func (c *Client) Execute() error {
 	}
 
 	if c.config.BackupAllMasters {
-		ips = c.config.Ips
+		instances = c.config.Instances
 	} else if c.config.BackupFromInactiveNode {
 		var largestIndexHealthy int
-		var largestIndexHealthyIp string
+		var largestIndexHealthyInstance config.Instance
 
-		for _, ip := range c.config.Ips {
-			wsrepIndex, err := c.galeraAgentCaller.WsrepLocalIndex(ip)
+		for _, instance := range c.config.Instances {
+			wsrepIndex, err := c.galeraAgentCaller.WsrepLocalIndex(instance.Address)
 			if err != nil {
 				c.logger.Error("Fetching node status from galera agent failed", err, lager.Data{
-					"ip": ip,
+					"ip": instance.Address,
 				})
 			}
 			if wsrepIndex >= largestIndexHealthy {
 				largestIndexHealthy = wsrepIndex
-				largestIndexHealthyIp = ip
+				largestIndexHealthyInstance = instance
 			}
 		}
 
-		if largestIndexHealthyIp == "" {
+		if largestIndexHealthyInstance.Address == "" {
 			return errors.New("No healthy nodes found")
 		}
 
-		ips = []string{largestIndexHealthyIp}
+		instances = []config.Instance{largestIndexHealthyInstance}
 	} else {
-		ips = []string{c.config.Ips[len(c.config.Ips)-1]}
+		instances = []config.Instance{c.config.Instances[len(c.config.Instances)-1]}
 	}
-	for index, ip := range ips {
+
+	for _, instance := range instances {
 		c.version = time.Now().Unix()
 
-		c.logger = c.config.Logger.Session("backup-"+ip, lager.Data{
-			"ip": ip,
+		c.logger = c.config.Logger.Session("backup-"+instance.Address, lager.Data{
+			"ip": instance.Address,
 		})
 
-		err := c.BackupNode(ip, index)
+		err := c.BackupNode(instance)
 		if err != nil {
 			allErrors = append(allErrors, err)
 		}
 		c.cleanDirectories() //ensure directories are cleaned on error
 	}
 
-	if len(allErrors) == len(ips) {
+	if len(allErrors) == len(instances) {
 		return allErrors
 	}
 	return nil
 }
 
-func (c *Client) BackupNode(ip string, index int) error {
+func (c *Client) BackupNode(instance config.Instance) error {
 	var err error
 	err = c.createDirectories()
 	if err != nil {
 		return err
 	}
-	err = c.downloadAndUntarBackup(ip)
+	err = c.downloadAndUntarBackup(instance.Address)
 	if err != nil {
 		return err
 	}
@@ -187,11 +188,11 @@ func (c *Client) BackupNode(ip string, index int) error {
 	if err != nil {
 		return err
 	}
-	err = c.writeMetadataFile(index)
+	err = c.writeMetadataFile(instance.UUID)
 	if err != nil {
 		return err
 	}
-	err = c.tarAndEncryptBackup(index)
+	err = c.tarAndEncryptBackup(instance.UUID)
 	if err != nil {
 		return err
 	}
@@ -280,9 +281,9 @@ func (c *Client) prepareBackup() error {
 // this concrete file dependency
 //
 // See: https://www.pivotaltracker.com/story/show/98994636
-func (c *Client) writeMetadataFile(index int) error {
+func (c *Client) writeMetadataFile(uuid string) error {
 	src := c.originalMetadataLocation()
-	dst := c.finalMetadataLocation(index)
+	dst := c.finalMetadataLocation(uuid)
 
 	c.logger.Info("Copying metadata file", lager.Data{
 		"from": src,
@@ -318,12 +319,12 @@ func (c *Client) writeMetadataFile(index int) error {
 	return nil
 }
 
-func (c *Client) tarAndEncryptBackup(index int) error {
+func (c *Client) tarAndEncryptBackup(uuid string) error {
 	c.logger.Info("Starting encrypting backup")
 
 	tarCmd := c.tarClient.Tar(c.prepareDirectory)
 
-	encryptedFileWriter, err := os.Create(c.encryptedBackupLocation(index))
+	encryptedFileWriter, err := os.Create(c.encryptedBackupLocation(uuid))
 	if err != nil {
 		c.logger.Error("Error creating encrypted backup file", err)
 		return err

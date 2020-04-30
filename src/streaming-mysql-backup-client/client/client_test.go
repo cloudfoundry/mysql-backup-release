@@ -1,24 +1,23 @@
 package client_test
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 
-	"io/ioutil"
-	"os"
-
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
-	"errors"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/client"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/client/clientfakes"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 )
 
@@ -44,7 +43,9 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 		logger = lagertest.NewTestLogger("backup-download-test")
 
 		rootConfig = &config.Config{
-			Ips:              []string{"node1"},
+			Instances: []config.Instance{
+				{Address: "node1", UUID: "uuid1"},
+			},
 			BackupServerPort: 1234,
 			BackupAllMasters: false,
 			TmpDir:           outputDirectory,
@@ -129,7 +130,11 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 
 	Context("When there are multiple URLs", func() {
 		BeforeEach(func() {
-			rootConfig.Ips = []string{"node1", "node2", "node3"}
+			rootConfig.Instances = []config.Instance{
+				{Address: "node1", UUID: "uuid-1"},
+				{Address: "node2", UUID: "uuid-2"},
+				{Address: "node3", UUID: "uuid-3"},
+			}
 		})
 
 		Context("When BackupAllMasters is true", func() {
@@ -152,6 +157,10 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 					matches, err = filepath.Glob(filepath.Join(outputDirectory, backupMetadataGlob))
 					Expect(err).ToNot(HaveOccurred())
 					Expect(matches).To(HaveLen(3))
+
+					expectFileToExist(filepath.Join(outputDirectory, "mysql-backup-[0-9]*-uuid-1.tar.gpg"))
+					expectFileToExist(filepath.Join(outputDirectory, "mysql-backup-[0-9]*-uuid-2.tar.gpg"))
+					expectFileToExist(filepath.Join(outputDirectory, "mysql-backup-[0-9]*-uuid-3.tar.gpg"))
 				})
 			})
 

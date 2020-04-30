@@ -42,7 +42,7 @@ var _ = Describe("ClientConfig", func() {
 
 	JustBeforeEach(func() {
 		configurationTemplate := `{
-						"Ips": ["fakeIp"],
+						"Instances": [ { "Address": "fakeIp", "UUID": "some-uuid" }],
 						"BackupServerPort": 8081,
 						"BackupAllMasters": false,
 						"BackupFromInactiveNode": false,
@@ -82,6 +82,14 @@ var _ = Describe("ClientConfig", func() {
 		Expect(rootConfig.TLS.Config.ServerName).To(Equal("myServerName"))
 		Expect(rootConfig.TLS.Config.Certificates).To(HaveLen(0)) // mTLS is off by default
 		Expect(rootConfig.TLS.Config.CipherSuites).NotTo(BeEmpty())
+	})
+
+	It("Has data for the Instances", func() {
+		rootConfig, err := configPkg.NewConfig(osArgs)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(rootConfig.Instances[0].Address).To(Equal("fakeIp"))
+		Expect(rootConfig.Instances[0].UUID).To(Equal("some-uuid"))
 	})
 
 	Context("When server CA certificate does not exist", func() {

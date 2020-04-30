@@ -3,9 +3,13 @@
   backup_tool_link = link('mysql-backup-tool')
 
   if p('cf-mysql-backup.backup_local_node_only')
-    backup_addresses = ['127.0.0.1']
+    instances = [
+      { "Address" => '127.0.0.1', "UUID" => spec.id },
+    ]
   else
-    backup_addresses = backup_tool_link.instances.map { |instance| instance.address }
+    instances = backup_tool_link.instances.map { |instance|
+      { "Address" => instance.address, "UUID" => instance.id }
+    }
   end
 
   galera_agent_port = nil
@@ -27,7 +31,7 @@
   end
 
   config = {
-    "Ips" => backup_addresses,
+    "Instances" => instances,
     "BackupServerPort" => p('cf-mysql-backup.backup-server.port'),
     "BackupAllMasters" => p('cf-mysql-backup.backup-all-masters'),
     "BackupFromInactiveNode" => p('cf-mysql-backup.backup_from_inactive_node'),
