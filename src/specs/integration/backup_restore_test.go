@@ -297,7 +297,7 @@ var _ = Describe("BackupRestore", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(buf).To(gbytes.Say(`Get https://backup-server.%s:8081/backup: remote error: tls: bad certificate`, sessionID))
+				Expect(buf).To(gbytes.Say(`Get "https://backup-server.%s:8081/backup": remote error: tls: bad certificate`, sessionID))
 			})
 		})
 	})
@@ -394,7 +394,12 @@ func backupServerConfig(credentials TestCredentials) string {
 
 func backupClientConfig(backupServerHost, encryptionPassword string, credentials TestCredentials) string {
 	cfg := map[string]interface{}{
-		"Ips":                    []string{backupServerHost},
+		"Instances": []map[string]string{
+			{
+				"Address": backupServerHost,
+				"UUID":    "backup-server-uuid",
+			},
+		},
 		"BackupServerPort":       8081,
 		"BackupAllMasters":       false,
 		"BackupFromInactiveNode": false,

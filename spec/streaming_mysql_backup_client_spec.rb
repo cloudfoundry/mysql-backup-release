@@ -10,8 +10,8 @@ describe 'streaming-mysql-backup-client job' do
     Bosh::Template::Test::Link.new(
       name: 'mysql-backup-tool',
       instances: [
-        Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-1'),
-        Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-2')
+        Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-1', id: 'instance-id-1'),
+        Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-2', id: 'instance-id-2')
       ],
       properties: {
         'cf-mysql-backup' => {
@@ -37,11 +37,11 @@ describe 'streaming-mysql-backup-client job' do
         }
       }}
 
-      it 'use 127.0.0.1 as Ips in the config' do
+      it 'use 127.0.0.1 as Instances in the config' do
         tpl_output = template.render(spec, consumes: links)
         tpl_yaml = YAML.load(tpl_output)
-        expect(tpl_yaml['Ips'].size).to equal(1)
-        expect(tpl_yaml['Ips']).to include("127.0.0.1")
+        expect(tpl_yaml['Instances'].size).to equal(1)
+        expect(tpl_yaml['Instances']).to contain_exactly({ "Address" => "127.0.0.1", "UUID" => "xxxxxx-xxxxxxxx-xxxxx"})
       end
     end
 
@@ -58,9 +58,12 @@ describe 'streaming-mysql-backup-client job' do
       it 'use backup tool links as Ips in the config' do
         tpl_output = template.render(spec, consumes: links)
         tpl_yaml = YAML.load(tpl_output)
-        expect(tpl_yaml['Ips'].size).to equal(2)
-        expect(tpl_yaml['Ips']).to include("backup-instance-address-1")
-        expect(tpl_yaml['Ips']).to include("backup-instance-address-2")
+
+        expect(tpl_yaml['Instances'].size).to equal(2)
+        expect(tpl_yaml['Instances']).to contain_exactly(
+          { "Address" => "backup-instance-address-1", "UUID" => "instance-id-1" },
+          { "Address" => "backup-instance-address-2", "UUID" => "instance-id-2" },
+        )
       end
     end
 
