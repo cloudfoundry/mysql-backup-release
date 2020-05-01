@@ -1,11 +1,5 @@
 # abort script on any command that exits with a non zero value
-set -e
-set -x
-
-XTRABACKUP_VERSION=2.4.20
-PREFIX=${BOSH_INSTALL_TARGET}
-
-export PATH=$PATH:${BOSH_INSTALL_TARGET}/bin
+set -eu
 
 NPROC="$(nproc)"
 
