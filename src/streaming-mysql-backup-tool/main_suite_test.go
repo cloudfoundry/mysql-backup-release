@@ -54,6 +54,7 @@ func createTmpFile(filePrefix string) *os.File {
 
 	return tmpFile
 }
+
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
 })

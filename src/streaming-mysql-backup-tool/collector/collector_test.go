@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	. "github.com/cloudfoundry/streaming-mysql-backup-tool/collector"
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/collector/collectorfakes"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Collector", func() {

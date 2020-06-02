@@ -1,8 +1,10 @@
 package config_test
 
 import (
-	"code.cloudfoundry.org/tlsconfig/certtest"
 	"fmt"
+
+	"code.cloudfoundry.org/tlsconfig/certtest"
+
 	configPkg "github.com/cloudfoundry/streaming-mysql-backup-client/config"
 
 	. "github.com/onsi/ginkgo"
@@ -13,16 +15,18 @@ var _ = Describe("ClientConfig", func() {
 	var (
 		configuration string
 
-		serverName      string
-		serverCA        string
-		clientCert      string
-		clientKey       string
-		enableMutualTLS bool
-		osArgs          []string
+		serverName        string
+		serverCA          string
+		clientCert        string
+		clientKey         string
+		enableMutualTLS   bool
+		someEncryptionKey string
+		osArgs            []string
 	)
 
 	BeforeEach(func() {
 		serverName = "myServerName"
+		someEncryptionKey = "myEncryptionKey"
 
 		ca, err := certtest.BuildCA("serverCA")
 		Expect(err).ToNot(HaveOccurred())
@@ -82,6 +86,28 @@ var _ = Describe("ClientConfig", func() {
 		Expect(rootConfig.TLS.Config.ServerName).To(Equal("myServerName"))
 		Expect(rootConfig.TLS.Config.Certificates).To(HaveLen(0)) // mTLS is off by default
 		Expect(rootConfig.TLS.Config.CipherSuites).NotTo(BeEmpty())
+	})
+
+	Context("when the os args omit the encryption key", func() {
+		It("Uses the encryption key from the config file", func() {
+			rootConfig, err := configPkg.NewConfig(osArgs)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(rootConfig.SymmetricKey).To(Equal("fakeKey"))
+		})
+	})
+
+	Context("when the os args include the encryption key", func() {
+		JustBeforeEach(func() {
+			osArgs = append(osArgs, "--encryption-key", someEncryptionKey)
+		})
+
+		It("Uses the encryption key in the os arg instead of the config file", func() {
+			rootConfig, err := configPkg.NewConfig(osArgs)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(rootConfig.SymmetricKey).To(Equal(someEncryptionKey))
+		})
 	})
 
 	It("Has data for the Instances", func() {

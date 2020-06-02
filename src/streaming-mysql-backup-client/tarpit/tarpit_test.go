@@ -2,12 +2,12 @@ package tarpit_test
 
 import (
 	"fmt"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"os"
 	"runtime"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 )
 
 var _ = Describe("NewOSXTarClient", func() {

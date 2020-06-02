@@ -91,17 +91,18 @@ func NewConfig(osArgs []string) (*Config, error) {
 	rootConfig.MetadataFields = make(map[string]string)
 
 	binaryName := osArgs[0]
-	configurationOptions := osArgs[1:]
+	executableArgs := osArgs[1:]
 
 	serviceConfig := service_config.New()
 	flags := flag.NewFlagSet(binaryName, flag.ExitOnError)
+	encryptionKey := flags.String("encryption-key", "", "Key used to encrypt the backup")
 
 	lagerflags.AddFlags(flags)
 	rootConfig.Logger, _ = lagerflags.New(binaryName)
 	rootConfig.Logger.RegisterSink(lager.NewWriterSink(os.Stderr, lager.ERROR))
 
 	serviceConfig.AddFlags(flags)
-	_ = flags.Parse(configurationOptions)
+	_ = flags.Parse(executableArgs)
 
 	err := serviceConfig.Read(&rootConfig)
 	if err != nil {
@@ -110,6 +111,10 @@ func NewConfig(osArgs []string) (*Config, error) {
 
 	if err := rootConfig.TLS.unmarshalTLSConfig(); err != nil {
 		return &rootConfig, err
+	}
+
+	if *encryptionKey != "" {
+		rootConfig.SymmetricKey = *encryptionKey
 	}
 
 	return &rootConfig, nil

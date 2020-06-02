@@ -1,12 +1,12 @@
 package galera_agent_caller_test
 
 import (
+	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
 	"strings"
 )
 

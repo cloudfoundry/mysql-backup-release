@@ -6,10 +6,10 @@ import (
 	"os/exec"
 
 	"code.cloudfoundry.org/lager/lagertest"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	. "github.com/cloudfoundry/streaming-mysql-backup-tool/api"
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/api/apifakes"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("BackupHandler", func() {

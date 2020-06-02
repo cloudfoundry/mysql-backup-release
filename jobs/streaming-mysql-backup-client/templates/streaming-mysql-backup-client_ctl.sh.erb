@@ -42,7 +42,7 @@ executable=$package_dir/bin/$executable_name
 pushd $package_dir
 
   $executable \
-      -configPath=$config_path \
+      -configPath=$config_path $@ \
       >>$log_dir/streaming-mysql-backup-client.stdout.log 2>>$log_dir/streaming-mysql-backup-client.stderr.log
 
 popd
