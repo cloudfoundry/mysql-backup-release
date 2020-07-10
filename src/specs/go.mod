@@ -1,6 +1,6 @@
 module github.com/cloudfoundry/specs
 
-go 1.13
+go 1.14
 
 require (
 	code.cloudfoundry.org/tlsconfig v0.0.0-20190419002020-eb9396db5a71

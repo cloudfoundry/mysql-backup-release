@@ -1,6 +1,6 @@
 module github.com/cloudfoundry/streaming-mysql-backup-tool
 
-go 1.13
+go 1.14
 
 require (
 	code.cloudfoundry.org/cflager v0.0.0-20170223024708-002c77949703
@@ -16,5 +16,5 @@ require (
 	github.com/square/certstrap v1.1.2-0.20190303202523-350df15b3713 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/validator.v2 v2.0.0-20191107172027-c3144fdedc21 // indirect
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.2.8
 )
