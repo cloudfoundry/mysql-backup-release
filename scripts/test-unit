@@ -14,7 +14,7 @@ rm -rf ${RELEASE_DIR}/bin/fgt
 
 go get github.com/onsi/ginkgo/ginkgo
 go get github.com/GeertJohan/fgt
-go get github.com/maxbrunsfeld/counterfeiter
+go get github.com/maxbrunsfeld/counterfeiter/v6
 
 echo -e "\nTesting Streaming backup tool..."
 ${RELEASE_DIR}/src/streaming-mysql-backup-tool/bin/test "$@"
