@@ -27,6 +27,7 @@ var _ = Describe("ClientConfig", func() {
 	BeforeEach(func() {
 		serverName = "myServerName"
 		someEncryptionKey = "myEncryptionKey"
+		enableMutualTLS = false
 
 		ca, err := certtest.BuildCA("serverCA")
 		Expect(err).ToNot(HaveOccurred())
