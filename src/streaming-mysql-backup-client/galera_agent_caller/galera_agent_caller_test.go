@@ -1,20 +1,22 @@
 package galera_agent_caller_test
 
 import (
-	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
+
+	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
+	. "github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Galera Agent", func() {
 	var (
 		test_server *httptest.Server
 		handlerFunc func(http.ResponseWriter, *http.Request)
-		galeraAgent galera_agent_caller.GaleraAgentCallerInterface
+		galeraAgent GaleraAgentCallerInterface
 		addr        string
 		port        int
 	)
@@ -32,7 +34,7 @@ var _ = Describe("Galera Agent", func() {
 		addr = addrAndPort[0]
 		port, _ = strconv.Atoi(addrAndPort[1])
 
-		galeraAgent = galera_agent_caller.DefaultGaleraAgentCaller(port)
+		galeraAgent = DefaultGaleraAgentCaller(port)
 	})
 
 	Describe("WsrepLocalIndex", func() {
@@ -87,6 +89,61 @@ var _ = Describe("Galera Agent", func() {
 		})
 	})
 
+})
+
+var _ = Describe("Galera Agent Client", func() {
+	Describe("HTTPClient", func() {
+		var (
+			httpClient *http.Client
+			backendTLS *config.BackendTLS
+		)
+
+		BeforeEach(func() {
+			// TODO: set this config via OS? like in PXC-release
+			backendTLS = &config.BackendTLS{}
+			//osArgs := []string{
+			//	"galera-init",
+			//	"-configPath=fixtures/validConfig.yml",
+			//}
+			//
+			//var err error
+			//rootConfig, err = NewConfig(osArgs)
+			//Expect(err).NotTo(HaveOccurred())
+		})
+
+		JustBeforeEach(func() {
+			httpClient = NewGaleraAgentHTTPClient(*backendTLS)
+		})
+
+		It("returns a client", func() {
+			Expect(httpClient).ToNot(BeNil())
+		})
+
+		When("Galera Agent TLS is not enabled", func() {
+			BeforeEach(func() {
+				backendTLS.Enabled = false
+			})
+
+			It("does not configure a TLSClientConfig", func() {
+				Expect(httpClient.Transport).To(BeNil())
+			})
+		})
+
+		When("Galera Agent TLS is enabled", func() {
+			BeforeEach(func() {
+				backendTLS.Enabled = true
+			})
+
+			It("configures a TLSClientConfig", func() {
+				Expect(httpClient.Transport).To(BeAssignableToTypeOf(&http.Transport{}))
+
+				transport := httpClient.Transport.(*http.Transport)
+
+				Expect(transport.TLSClientConfig.ServerName).To(Equal(backendTLS.ServerName))
+				Expect(transport.TLSClientConfig.RootCAs).NotTo(BeNil())
+			})
+		})
+	})
 })
 
 func writeBody(w http.ResponseWriter, bodyContents []byte) {

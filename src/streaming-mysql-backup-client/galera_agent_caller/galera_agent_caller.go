@@ -1,11 +1,15 @@
 package galera_agent_caller
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
 )
 
 type GaleraAgentCallerInterface interface {
@@ -59,4 +63,24 @@ func (galeraAgentCaller *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, err
 		return -1, errors.New("Node is not healthy")
 	}
 	return nodeStatus.WsrepLocalIndex, nil
+}
+
+func NewGaleraAgentHTTPClient(config config.BackendTLS) *http.Client {
+	client := &http.Client{}
+
+	if config.Enabled {
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM([]byte(config.CA)); !ok {
+			// TODO: should we handle the failure parsing a CA?
+		}
+
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:    certPool,
+				ServerName: config.ServerName,
+			},
+		}
+	}
+
+	return client
 }

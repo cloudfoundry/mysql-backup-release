@@ -26,6 +26,7 @@ type Config struct {
 	TLS                    TLSConfig   `yaml:"TLS"`
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
+	BackendTLS             BackendTLS `yaml:"BackendTLS"`
 }
 
 type Instance struct {
@@ -45,6 +46,12 @@ type TLSConfig struct {
 	ClientCert      string      `yaml:"ClientCert" validate:"nonzero"`
 	ClientKey       string      `yaml:"ClientKey" validate:"nonzero"`
 	Config          *tls.Config `yaml:"-"`
+}
+
+type BackendTLS struct {
+	Enabled    bool   `yaml:"Enabled"`
+	ServerName string `yaml:"ServerName"`
+	CA         string `yaml:"CA"`
 }
 
 func (t *TLSConfig) unmarshalTLSConfig() error {
