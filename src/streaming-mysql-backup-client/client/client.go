@@ -75,7 +75,7 @@ func DefaultClient(config config.Config) *Client {
 		tarpit.NewSystemTarClient(),
 		prepare.DefaultBackupPreparer(),
 		download.DefaultDownloadBackup(clock.DefaultClock(), config),
-		galera_agent_caller.DefaultGaleraAgentCaller(config.GaleraAgentPort),
+		galera_agent_caller.DefaultGaleraAgentCaller(config.GaleraAgentPort, config.BackendTLS),
 	)
 }
 

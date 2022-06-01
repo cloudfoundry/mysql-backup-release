@@ -49,9 +49,10 @@ type TLSConfig struct {
 }
 
 type BackendTLS struct {
-	Enabled    bool   `yaml:"Enabled"`
-	ServerName string `yaml:"ServerName"`
-	CA         string `yaml:"CA"`
+	Enabled            bool   `yaml:"Enabled"`
+	ServerName         string `yaml:"ServerName"`
+	CA                 string `yaml:"CA"`
+	InsecureSkipVerify bool   `yaml:"InsecureSkipVerify"`
 }
 
 func (t *TLSConfig) unmarshalTLSConfig() error {

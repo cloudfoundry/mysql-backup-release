@@ -26,6 +26,52 @@ describe 'streaming-mysql-backup-client job' do
 
   describe 'streaming-mysql-backup-client template' do
     let(:template) { job.template('config/streaming-mysql-backup-client.yml') }
+    context('when galera-agent is configured with tls') do
+	  let(:spec) {{
+		"cf-mysql-backup" => {
+		  "backup_local_node_only" => true,
+		  'symmetric_key' => 'some-symmetric-key',
+		  'tls' => {
+			'ca_certificate' => 'some-ca'
+		  }
+		}
+	  }}
+	  let(:links) {[
+	  	Bosh::Template::Test::Link.new(
+          name: 'mysql-backup-tool',
+          instances: [
+            Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-1', id: 'instance-id-1'),
+            Bosh::Template::Test::LinkInstance.new(address: 'backup-instance-address-2', id: 'instance-id-2')
+          ],
+          properties: {
+            'cf-mysql-backup' => {
+              'endpoint_credentials' => {
+                'username' => 'some-username',
+                'password' => 'some-password'
+              }
+            }
+          }
+        ),
+		Bosh::Template::Test::Link.new(
+		  name: 'galera-agent',
+		  properties: {
+			"endpoint_tls" => {
+				"enabled" => true,
+				"ca" => "PEM Cert",
+				"server_name" => "server name"
+			}
+		  }
+		)
+	  ]}
+
+	  it "configures backendTLS in the config" do
+		tpl_output = template.render(spec, consumes: links)
+		tpl_yaml = YAML.load(tpl_output)
+		expect(tpl_yaml["BackendTLS"]).to eq(
+			{"Enabled" => true, "CA" => "PEM Cert", "ServerName" => "server name"}
+		)
+	  end
+    end
     context('when backup_local_node_only is true') do
       let(:spec) {{
         "cf-mysql-backup" => {

@@ -19,6 +19,7 @@ var _ = Describe("Galera Agent", func() {
 		galeraAgent GaleraAgentCallerInterface
 		addr        string
 		port        int
+		backendTLS  config.BackendTLS
 	)
 
 	BeforeEach(func() {
@@ -33,8 +34,9 @@ var _ = Describe("Galera Agent", func() {
 		addrAndPort := strings.Split(test_server.Listener.Addr().String(), ":")
 		addr = addrAndPort[0]
 		port, _ = strconv.Atoi(addrAndPort[1])
+		backendTLS = config.BackendTLS{Enabled: false}
 
-		galeraAgent = DefaultGaleraAgentCaller(port)
+		galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
 	})
 
 	Describe("WsrepLocalIndex", func() {
@@ -89,6 +91,68 @@ var _ = Describe("Galera Agent", func() {
 		})
 	})
 
+	var _ = Describe("TLS connectivity", func() {
+		BeforeEach(func() {
+			handlerFunc = func(w http.ResponseWriter, r *http.Request) {
+				writeBody(w, []byte(`{"wsrep_local_state":4,"wsrep_local_state_comment":"Synced","wsrep_local_index":42,"healthy":true}`))
+			}
+		})
+		JustBeforeEach(func() {
+			handler := http.HandlerFunc(handlerFunc)
+			test_server = httptest.NewTLSServer(handler)
+			addrAndPort := strings.Split(test_server.Listener.Addr().String(), ":")
+			addr = addrAndPort[0]
+			port, _ = strconv.Atoi(addrAndPort[1])
+			backendTLS = config.BackendTLS{
+				Enabled:            true,
+				InsecureSkipVerify: true,
+			}
+
+		})
+		When("TLS is properly configured", func() {
+			It("connects via TLS", func() {
+				galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
+				index, err := galeraAgent.WsrepLocalIndex(addr)
+				Expect(index).To(Equal(42))
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+		When("the client attempts a non-TLS connection to a TLS back-end", func() {
+			BeforeEach(func() {
+			})
+			It("returns the expected error", func() {
+				backendTLS.Enabled = false
+				galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
+				_, err := galeraAgent.WsrepLocalIndex(addr)
+				Expect(err).To(HaveOccurred())
+				//TODO this error message needs to be improved
+				Expect(err.Error()).To(Equal("Error response from node"))
+			})
+		})
+		When("the server's certificate cannot be authenticated", func() {
+			BeforeEach(func() {
+				// Since httptest nodes don't support secure TLS connections,
+				// this provokes the desired authentication failure.
+				//rootConfig.BackendTLS.InsecureSkipVerify = false
+			})
+			It("returns the expected error", func() {
+			})
+		})
+		When("the server's certificate doesn't contains the expected name", func() {
+			BeforeEach(func() {
+				//rootConfig.BackendTLS.InsecureSkipVerify = false
+				//rootConfig.BackendTLS.ServerName = "incorrectValue.org"
+			})
+			It("returns the expected error", func() {
+			})
+		})
+
+	})
+
+	Describe("backendTLS is true", func() {
+
+	})
+
 })
 
 var _ = Describe("Galera Agent Client", func() {
@@ -99,16 +163,15 @@ var _ = Describe("Galera Agent Client", func() {
 		)
 
 		BeforeEach(func() {
-			// TODO: set this config via OS? like in PXC-release
 			backendTLS = &config.BackendTLS{}
-			//osArgs := []string{
-			//	"galera-init",
-			//	"-configPath=fixtures/validConfig.yml",
-			//}
-			//
-			//var err error
-			//rootConfig, err = NewConfig(osArgs)
-			//Expect(err).NotTo(HaveOccurred())
+			osArgs := []string{
+				"galera-init",
+				"-configPath=../client/fixtures/validConfig.yml",
+			}
+
+			var err error
+			_, err = config.NewConfig(osArgs)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {

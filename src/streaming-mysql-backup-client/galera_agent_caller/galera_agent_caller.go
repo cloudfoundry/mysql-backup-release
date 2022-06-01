@@ -17,12 +17,14 @@ type GaleraAgentCallerInterface interface {
 }
 
 type GaleraAgentCaller struct {
-	galeraAgentPort int
+	galeraAgentPort  int
+	galeraBackendTLS config.BackendTLS
 }
 
-func DefaultGaleraAgentCaller(galeraAgentPort int) GaleraAgentCallerInterface {
+func DefaultGaleraAgentCaller(galeraAgentPort int, backendTLS config.BackendTLS) GaleraAgentCallerInterface {
 	return &GaleraAgentCaller{
-		galeraAgentPort: galeraAgentPort,
+		galeraAgentPort:  galeraAgentPort,
+		galeraBackendTLS: backendTLS,
 	}
 }
 
@@ -32,8 +34,12 @@ type status struct {
 }
 
 func (galeraAgentCaller *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, error) {
-	httpClient := &http.Client{}
-	url := fmt.Sprintf("http://%s:%d/api/v1/status", ip, galeraAgentCaller.galeraAgentPort)
+	httpClient := NewGaleraAgentHTTPClient(galeraAgentCaller.galeraBackendTLS)
+	protocol := "http"
+	if galeraAgentCaller.galeraBackendTLS.Enabled {
+		protocol = "https"
+	}
+	url := fmt.Sprintf("%s://%s:%d/api/v1/status", protocol, ip, galeraAgentCaller.galeraAgentPort)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -76,8 +82,9 @@ func NewGaleraAgentHTTPClient(config config.BackendTLS) *http.Client {
 
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs:    certPool,
-				ServerName: config.ServerName,
+				RootCAs:            certPool,
+				ServerName:         config.ServerName,
+				InsecureSkipVerify: config.InsecureSkipVerify,
 			},
 		}
 	}
