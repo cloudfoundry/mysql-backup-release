@@ -3,8 +3,13 @@ package main
 import (
 	"os"
 
-	c "github.com/cloudfoundry/streaming-mysql-backup-client/client"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/client"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/clock"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/prepare"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 )
 
 func main() {
@@ -16,8 +21,16 @@ func main() {
 		logger.Fatal("Error parsing config file", err)
 	}
 
-	client := c.DefaultClient(*rootConfig)
-	if err := client.Execute(); err != nil {
+
+
+	c := client.NewClient(
+		*rootConfig,
+		tarpit.NewSystemTarClient(),
+		prepare.DefaultBackupPreparer(),
+		download.DefaultDownloadBackup(clock.DefaultClock(), *rootConfig),
+		galera_agent_caller.DefaultGaleraAgentCaller((*rootConfig).GaleraAgentPort, (*rootConfig).BackendTLS),
+	)
+	if err := c.Execute(); err != nil {
 		logger.Fatal("All backups failed. Not able to generate a valid backup artifact. See error(s) below: %s", err)
 	}
 }

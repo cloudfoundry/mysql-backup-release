@@ -13,13 +13,10 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
-	"github.com/cloudfoundry/streaming-mysql-backup-client/clock"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/cryptkeeper"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/fileutils"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
-	"github.com/cloudfoundry/streaming-mysql-backup-client/prepare"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
 )
 
@@ -67,16 +64,6 @@ type Client struct {
 	encryptDirectory  string
 	encryptor         *cryptkeeper.CryptKeeper
 	metadataFields    map[string]string
-}
-
-func DefaultClient(config config.Config) *Client {
-	return NewClient(
-		config,
-		tarpit.NewSystemTarClient(),
-		prepare.DefaultBackupPreparer(),
-		download.DefaultDownloadBackup(clock.DefaultClock(), config),
-		galera_agent_caller.DefaultGaleraAgentCaller(config.GaleraAgentPort, config.BackendTLS),
-	)
 }
 
 func NewClient(config config.Config, tarClient *tarpit.TarClient, backupPreparer BackupPreparer, downloader Downloader, galeraAgentCaller GaleraAgentCallerInterface) *Client {
