@@ -36,7 +36,10 @@ var _ = Describe("Galera Agent", func() {
 		port, _ = strconv.Atoi(addrAndPort[1])
 		backendTLS = config.BackendTLS{Enabled: false}
 
-		galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
+		galeraAgent = &GaleraAgentCaller{
+			GaleraAgentPort:  port,
+			GaleraBackendTLS: backendTLS,
+		}
 	})
 
 	Describe("WsrepLocalIndex", func() {
@@ -111,7 +114,10 @@ var _ = Describe("Galera Agent", func() {
 		})
 		When("TLS is properly configured", func() {
 			It("connects via TLS", func() {
-				galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
+				galeraAgent = &GaleraAgentCaller{
+					GaleraAgentPort:  port,
+					GaleraBackendTLS: backendTLS,
+				}
 				index, err := galeraAgent.WsrepLocalIndex(addr)
 				Expect(index).To(Equal(42))
 				Expect(err).ToNot(HaveOccurred())
@@ -122,7 +128,10 @@ var _ = Describe("Galera Agent", func() {
 			})
 			It("returns the expected error", func() {
 				backendTLS.Enabled = false
-				galeraAgent = DefaultGaleraAgentCaller(port, backendTLS)
+				galeraAgent = &GaleraAgentCaller{
+					GaleraAgentPort:  port,
+					GaleraBackendTLS: backendTLS,
+				}
 				_, err := galeraAgent.WsrepLocalIndex(addr)
 				Expect(err).To(HaveOccurred())
 				//TODO this error message needs to be improved

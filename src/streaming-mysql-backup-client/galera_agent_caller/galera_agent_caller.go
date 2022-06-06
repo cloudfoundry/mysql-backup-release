@@ -17,15 +17,8 @@ type GaleraAgentCallerInterface interface {
 }
 
 type GaleraAgentCaller struct {
-	galeraAgentPort  int
-	galeraBackendTLS config.BackendTLS
-}
-
-func DefaultGaleraAgentCaller(galeraAgentPort int, backendTLS config.BackendTLS) GaleraAgentCallerInterface {
-	return &GaleraAgentCaller{
-		galeraAgentPort:  galeraAgentPort,
-		galeraBackendTLS: backendTLS,
-	}
+	GaleraAgentPort  int
+	GaleraBackendTLS config.BackendTLS
 }
 
 type status struct {
@@ -34,12 +27,12 @@ type status struct {
 }
 
 func (galeraAgentCaller *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, error) {
-	httpClient := NewGaleraAgentHTTPClient(galeraAgentCaller.galeraBackendTLS)
+	httpClient := NewGaleraAgentHTTPClient(galeraAgentCaller.GaleraBackendTLS)
 	protocol := "http"
-	if galeraAgentCaller.galeraBackendTLS.Enabled {
+	if galeraAgentCaller.GaleraBackendTLS.Enabled {
 		protocol = "https"
 	}
-	url := fmt.Sprintf("%s://%s:%d/api/v1/status", protocol, ip, galeraAgentCaller.galeraAgentPort)
+	url := fmt.Sprintf("%s://%s:%d/api/v1/status", protocol, ip, galeraAgentCaller.GaleraAgentPort)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

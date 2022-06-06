@@ -21,14 +21,15 @@ func main() {
 		logger.Fatal("Error parsing config file", err)
 	}
 
-
-
 	c := client.NewClient(
 		*rootConfig,
 		tarpit.NewSystemTarClient(),
 		prepare.DefaultBackupPreparer(),
 		download.DefaultDownloadBackup(clock.DefaultClock(), *rootConfig),
-		galera_agent_caller.DefaultGaleraAgentCaller((*rootConfig).GaleraAgentPort, (*rootConfig).BackendTLS),
+		&galera_agent_caller.GaleraAgentCaller{
+			GaleraAgentPort:  (*rootConfig).GaleraAgentPort,
+			GaleraBackendTLS: (*rootConfig).BackendTLS,
+		},
 	)
 	if err := c.Execute(); err != nil {
 		logger.Fatal("All backups failed. Not able to generate a valid backup artifact. See error(s) below: %s", err)
