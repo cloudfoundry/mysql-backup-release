@@ -1,15 +1,12 @@
 package galera_agent_caller
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
+	"strings"
 )
 
 type GaleraAgentCallerInterface interface {
@@ -17,8 +14,9 @@ type GaleraAgentCallerInterface interface {
 }
 
 type GaleraAgentCaller struct {
-	GaleraAgentPort  int
-	GaleraBackendTLS config.BackendTLS
+	GaleraAgentPort int
+	TLSEnabled      bool
+	HTTPClient      *http.Client
 }
 
 type status struct {
@@ -26,34 +24,29 @@ type status struct {
 	Healthy         bool `json:"healthy"`
 }
 
-func (galeraAgentCaller *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, error) {
-	httpClient := NewGaleraAgentHTTPClient(galeraAgentCaller.GaleraBackendTLS)
+func (g *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, error) {
+	httpClient := g.HTTPClient
 	protocol := "http"
-	if galeraAgentCaller.GaleraBackendTLS.Enabled {
+	if g.TLSEnabled {
 		protocol = "https"
 	}
-	url := fmt.Sprintf("%s://%s:%d/api/v1/status", protocol, ip, galeraAgentCaller.GaleraAgentPort)
+	url := fmt.Sprintf("%s://%s:%d/api/v1/status", protocol, ip, g.GaleraAgentPort)
 
-	request, err := http.NewRequest("GET", url, nil)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return -1, err
 	}
 
-	resp, err := httpClient.Do(request)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
+
 	if resp.StatusCode != http.StatusOK {
-		return -1, errors.New("Error response from node")
+		return -1, fmt.Errorf("%s: Error response from node: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
 	var nodeStatus status
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return -1, err
-	}
-
 	err = json.Unmarshal(body, &nodeStatus)
 	if err != nil {
 		return -1, err
@@ -62,25 +55,4 @@ func (galeraAgentCaller *GaleraAgentCaller) WsrepLocalIndex(ip string) (int, err
 		return -1, errors.New("Node is not healthy")
 	}
 	return nodeStatus.WsrepLocalIndex, nil
-}
-
-func NewGaleraAgentHTTPClient(config config.BackendTLS) *http.Client {
-	client := &http.Client{}
-
-	if config.Enabled {
-		certPool := x509.NewCertPool()
-		if ok := certPool.AppendCertsFromPEM([]byte(config.CA)); !ok {
-			// TODO: should we handle the failure parsing a CA?
-		}
-
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:            certPool,
-				ServerName:         config.ServerName,
-				InsecureSkipVerify: config.InsecureSkipVerify,
-			},
-		}
-	}
-
-	return client
 }
