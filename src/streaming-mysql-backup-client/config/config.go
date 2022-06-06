@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"net/http"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -27,6 +28,21 @@ type Config struct {
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
 	BackendTLS             BackendTLS `yaml:"BackendTLS"`
+}
+
+func (c Config) HTTPClient() *http.Client {
+	httpClient := &http.Client{}
+	if c.BackendTLS.Enabled {
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM([]byte(c.BackendTLS.CA))
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				ServerName: c.BackendTLS.ServerName,
+				RootCAs:    certPool,
+			},
+		}
+	}
+	return httpClient
 }
 
 type Instance struct {

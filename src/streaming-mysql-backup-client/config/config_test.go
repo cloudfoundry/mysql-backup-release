@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"fmt"
+	"net/http"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
 
@@ -22,6 +23,9 @@ var _ = Describe("ClientConfig", func() {
 		enableMutualTLS   bool
 		someEncryptionKey string
 		osArgs            []string
+		galeraAgentCA     string
+		galeraAgentName   string
+		galeraAgentTLS    bool
 	)
 
 	BeforeEach(func() {
@@ -43,6 +47,8 @@ var _ = Describe("ClientConfig", func() {
 
 		clientCert = string(certPEM)
 		clientKey = string(privateKey)
+
+		caBytes, err = ca.CertificatePEM()
 	})
 
 	JustBeforeEach(func() {
@@ -66,10 +72,16 @@ var _ = Describe("ClientConfig", func() {
 						"TmpDir": "fakeTmp",
 						"OutputDir": "fakeOutput",
 						"SymmetricKey": "fakeKey",
+						"BackendTLS": {
+							"Enabled": %t,
+							"ServerName": %q,
+							"CA": %q,
+						},
 					}`
 
 		configuration = fmt.Sprintf(
 			configurationTemplate, enableMutualTLS, clientCert, clientKey, serverName, serverCA,
+			galeraAgentTLS, galeraAgentName, galeraAgentCA,
 		)
 
 		osArgs = []string{
@@ -87,6 +99,22 @@ var _ = Describe("ClientConfig", func() {
 		Expect(rootConfig.TLS.Config.ServerName).To(Equal("myServerName"))
 		Expect(rootConfig.TLS.Config.Certificates).To(HaveLen(0)) // mTLS is off by default
 		Expect(rootConfig.TLS.Config.CipherSuites).NotTo(BeEmpty())
+		Expect(rootConfig.BackendTLS.Enabled).To(BeFalse())
+	})
+
+	When("BackendTLS is enabled", func() {
+		BeforeEach(func() {
+			galeraAgentTLS = true
+			galeraAgentCA = "galeraCA"
+			galeraAgentName = "galeraServerName"
+		})
+		It("Properly populates the BackendTLS", func() {
+			rootConfig, err := configPkg.NewConfig(osArgs)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rootConfig.BackendTLS.Enabled).To(BeTrue())
+			Expect(rootConfig.BackendTLS.CA).To(Equal("galeraCA"))
+			Expect(rootConfig.BackendTLS.ServerName).To(Equal("galeraServerName"))
+		})
 	})
 
 	Context("when the os args omit the encryption key", func() {
@@ -178,5 +206,47 @@ var _ = Describe("ClientConfig", func() {
 			})
 		})
 
+	})
+})
+
+var _ = Describe("Config.HTTPClient", func() {
+	It("creates a http client", func() {
+		cfg := configPkg.Config{}
+		client := cfg.HTTPClient()
+		Expect(client).ToNot(BeNil())
+		Expect(client).To(BeAssignableToTypeOf(&http.Client{}))
+		Expect(client.Transport).To(BeZero())
+	})
+
+	When("backend tls is configured", func() {
+		var caPEM string
+		BeforeEach(func() {
+			ca, err := certtest.BuildCA("serverCA")
+			Expect(err).ToNot(HaveOccurred())
+			caBytes, err := ca.CertificatePEM()
+			Expect(err).ToNot(HaveOccurred())
+
+			caPEM = string(caBytes)
+		})
+
+		It("creates an http client w/ a valid TLSClientConfig", func() {
+			cfg := configPkg.Config{
+				BackendTLS: configPkg.BackendTLS{
+					Enabled:    true,
+					ServerName: "something",
+					CA:         caPEM,
+				},
+			}
+			client := cfg.HTTPClient()
+			Expect(client).To(BeAssignableToTypeOf(&http.Client{}))
+
+			Expect(client.Transport).To(BeAssignableToTypeOf(&http.Transport{}))
+
+			tlsConfig := client.Transport.(*http.Transport).TLSClientConfig
+
+			Expect(tlsConfig.ServerName).To(Equal("something"))
+			Expect(tlsConfig.RootCAs).ToNot(BeNil())
+			Expect(tlsConfig.RootCAs.Subjects()).To(HaveLen(1))
+		})
 	})
 })
