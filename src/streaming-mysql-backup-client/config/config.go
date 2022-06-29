@@ -119,7 +119,13 @@ func NewConfig(osArgs []string) (*Config, error) {
 
 	serviceConfig := service_config.New()
 	flags := flag.NewFlagSet(binaryName, flag.ExitOnError)
-	encryptionKey := flags.String("encryption-key", "", "Key used to encrypt the backup")
+
+	var encryptionKey *string
+	if key, exists := os.LookupEnv("ENCRYPTION_KEY"); exists {
+		encryptionKey = &key
+	} else {
+		encryptionKey = flags.String("encryption-key", "", "Key used to encrypt the backup")
+	}
 
 	lagerflags.AddFlags(flags)
 	rootConfig.Logger, _ = lagerflags.New(binaryName)

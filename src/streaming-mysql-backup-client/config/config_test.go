@@ -3,6 +3,7 @@ package config_test
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
 
@@ -136,6 +137,19 @@ var _ = Describe("ClientConfig", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(rootConfig.SymmetricKey).To(Equal(someEncryptionKey))
+		})
+	})
+
+	Context("when the encryption key is an environment variable", func() {
+		JustBeforeEach(func() {
+			os.Setenv("ENCRYPTION_KEY", "environmentEncryptionKey")
+		})
+
+		It("Uses the encryption key in the environment instead of the config file", func() {
+			rootConfig, err := configPkg.NewConfig(osArgs)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(rootConfig.SymmetricKey).To(Equal("environmentEncryptionKey"))
 		})
 	})
 
