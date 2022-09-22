@@ -32,15 +32,16 @@ func (fake *FakeDownloader) DownloadBackup(arg1 string, arg2 download.StreamedWr
 		arg1 string
 		arg2 download.StreamedWriter
 	}{arg1, arg2})
+	stub := fake.DownloadBackupStub
+	fakeReturns := fake.downloadBackupReturns
 	fake.recordInvocation("DownloadBackup", []interface{}{arg1, arg2})
 	fake.downloadBackupMutex.Unlock()
-	if fake.DownloadBackupStub != nil {
-		return fake.DownloadBackupStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.downloadBackupReturns
 	return fakeReturns.result1
 }
 

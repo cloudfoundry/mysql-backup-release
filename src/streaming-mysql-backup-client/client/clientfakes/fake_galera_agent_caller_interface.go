@@ -31,15 +31,16 @@ func (fake *FakeGaleraAgentCallerInterface) WsrepLocalIndex(arg1 string) (int, e
 	fake.wsrepLocalIndexArgsForCall = append(fake.wsrepLocalIndexArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.WsrepLocalIndexStub
+	fakeReturns := fake.wsrepLocalIndexReturns
 	fake.recordInvocation("WsrepLocalIndex", []interface{}{arg1})
 	fake.wsrepLocalIndexMutex.Unlock()
-	if fake.WsrepLocalIndexStub != nil {
-		return fake.WsrepLocalIndexStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.wsrepLocalIndexReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

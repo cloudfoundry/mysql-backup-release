@@ -30,15 +30,16 @@ func (fake *FakeBackupPreparer) Command(arg1 string) *exec.Cmd {
 	fake.commandArgsForCall = append(fake.commandArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.CommandStub
+	fakeReturns := fake.commandReturns
 	fake.recordInvocation("Command", []interface{}{arg1})
 	fake.commandMutex.Unlock()
-	if fake.CommandStub != nil {
-		return fake.CommandStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.commandReturns
 	return fakeReturns.result1
 }
 

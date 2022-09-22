@@ -27,9 +27,9 @@ func main() {
 		prepare.DefaultBackupPreparer(),
 		download.DefaultDownloadBackup(clock.DefaultClock(), *rootConfig),
 		&galera_agent_caller.GaleraAgentCaller{
-			GaleraAgentPort:  (*rootConfig).GaleraAgentPort,
-			TLSEnabled: (*rootConfig).BackendTLS.Enabled,
-			HTTPClient: rootConfig.HTTPClient(),
+			GaleraAgentPort: (*rootConfig).GaleraAgentPort,
+			TLSEnabled:      (*rootConfig).BackendTLS.Enabled,
+			HTTPClient:      rootConfig.HTTPClient(),
 		},
 	)
 	if err := c.Execute(); err != nil {
