@@ -12,9 +12,9 @@ source ${RELEASE_DIR}/.envrc
 rm -rf ${RELEASE_DIR}/bin/ginkgo
 rm -rf ${RELEASE_DIR}/bin/fgt
 
-go get github.com/onsi/ginkgo/ginkgo
-go get github.com/GeertJohan/fgt
-go get github.com/maxbrunsfeld/counterfeiter/v6
+go install github.com/onsi/ginkgo/ginkgo@latest
+go install github.com/GeertJohan/fgt@latest
+go install github.com/maxbrunsfeld/counterfeiter/v6
 
 echo -e "\nTesting Streaming backup tool..."
 ${RELEASE_DIR}/src/streaming-mysql-backup-tool/bin/test "$@"
