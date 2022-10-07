@@ -7,23 +7,23 @@ PROCESSLIST_DEST="${PT_DEST}/processlist.log"
 VMSTAT_DEST="${PT_DEST}/vmstat.log"
 
 DEFAULTS_FILE=<%= p('cf_mysql.mysql.defaults_file_path') %>
-<% if_link('mysql-backup-user-creds') do %>
-DEFAULTS_FILE=/var/vcap/jobs/streaming-mysql-backup-tool/config/mysql-defaults-file.cnf \
-<% end %>
+# <% if_link('mysql-backup-user-creds') do %>
+DEFAULTS_FILE=/var/vcap/jobs/streaming-mysql-backup-tool/config/mysql-defaults-file.cnf
+# <% end %>
 
-MYSQL="/var/vcap/packages/mariadb/bin/mysql \
-	--defaults-file=${DEFAULTS_FILE} \
-	-e "
+mysql() {
+  /var/vcap/packages/*/bin/mysql --defaults-file="${DEFAULTS_FILE}" --execute="$1"
+}
 
 d=$(date +%F_%T |tr ":" "-")
 echo "###### ${d}" >> ${STATUS_DEST}
-$MYSQL "SHOW GLOBAL STATUS" >> ${STATUS_DEST}
+mysql "SHOW GLOBAL STATUS" >> ${STATUS_DEST}
 
 echo "###### ${d}" >> ${INNODB_STATUS_DEST}
-$MYSQL "SHOW ENGINE INNODB STATUS\G" >> ${INNODB_STATUS_DEST}
+mysql "SHOW ENGINE INNODB STATUS\G" >> ${INNODB_STATUS_DEST}
 
 echo "###### ${d}" >> ${PROCESSLIST_DEST}
-$MYSQL "SHOW FULL PROCESSLIST" >> ${PROCESSLIST_DEST}
+mysql "SHOW FULL PROCESSLIST" >> ${PROCESSLIST_DEST}
 
 echo "###### ${d}" >> ${VMSTAT_DEST}
 vmstat 1 10 >> ${VMSTAT_DEST}

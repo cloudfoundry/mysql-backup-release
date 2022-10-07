@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
 
@@ -44,13 +42,6 @@ func main() {
 	}
 
 	mux.Handle("/backup", backupHandler)
-
-	pidfile, err := os.Create(config.PidFile)
-	if err != nil {
-		logger.Fatal("Failed to create a file", err)
-	}
-
-	_ = ioutil.WriteFile(pidfile.Name(), []byte(strconv.Itoa(os.Getpid())), 0644)
 
 	logger.Info("Starting server with configuration", lager.Data{
 		"port": config.Port,

@@ -1,3 +1,19 @@
+boost_1_77_0.tar.bz2:
+  size: 110361537
+  object_id: 148fd02f-00a8-4d36-6d66-4d218d81f792
+  sha: sha256:fc9f85fc030e233142908241af7a846e60630aa7388de9a5fafb1f3a26840854
+libaio_0.3.112.orig.tar.xz:
+  size: 38196
+  object_id: f4cf992b-827f-4dde-43d8-65a0834925a2
+  sha: sha256:f69e5800425f4ea957426693ac09f9896bb993db5490fa021644454adcc72a32
+libev-4.33.tar.gz:
+  size: 569527
+  object_id: 3051a1af-be6b-4cb0-6b9a-d6e3fa16dd3e
+  sha: sha256:507eb7b8d1015fbec5b935f34ebed15bf346bed04a11ab82b8eee848c4205aea
+percona-xtrabackup-8.0.29-22.tar.gz:
+  size: 332851436
+  object_id: e6bdf3bb-ed90-42d5-6b9d-35fdd689228a
+  sha: sha256:7c3bdfaf0b02ec4c09b3cdb41b2a7f18f79dce9c5d396ada36fbc2557562ff55
 xtrabackup/boost_1_59_0.tar.gz:
   size: 83709983
   object_id: 20b5dbe0-2ec6-47c6-b4b0-64dd28034842

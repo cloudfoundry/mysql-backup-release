@@ -1,0 +1,15 @@
+---
+processes:
+- name: streaming-mysql-backup-tool
+  executable: /var/vcap/packages/streaming-mysql-backup-tool/bin/streaming-mysql-backup-tool
+  args: [-configPath=config/streaming-mysql-backup-tool.yml]
+  env:
+    PATH: "/var/vcap/packages/percona-xtrabackup-8.0/bin:<%= p('cf-mysql-backup.xtrabackup_path') %>:/usr/bin:/bin"
+  limits:
+    open_files: 1048576
+  additional_volumes:
+  - path: /var/vcap/store
+    writable: false
+  - path: "<%= p('cf_mysql.mysql.defaults_file_path') %>"
+    writable: false
+    mount_only: true
