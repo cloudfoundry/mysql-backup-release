@@ -3,9 +3,9 @@ name: streaming-mysql-backup-tool
 
 templates:
     mysql-defaults-file.cnf.erb: config/mysql-defaults-file.cnf
-    streaming-backup_ctl.erb: bin/streaming-backup_ctl
     streaming-mysql-backup-tool.yml.erb: config/streaming-mysql-backup-tool.yml
     simple_collect.sh.erb: bin/simple_collect.sh
+    bpm.yml.erb: config/bpm.yml
 
 packages:
 - streaming-mysql-backup-tool
