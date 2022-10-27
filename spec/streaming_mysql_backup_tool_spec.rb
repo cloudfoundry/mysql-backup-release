@@ -10,6 +10,29 @@ describe 'streaming-mysql-backup-tool job' do
   describe 'streaming-mysql-backup-tool template' do
     let(:template) { job.template('config/streaming-mysql-backup-tool.yml') }
 
+    context('when xtrabackup_path is provided') do
+      let(:spec) {{
+        "cf-mysql-backup" => {
+          'xtrabackup_path' => 'VALUE',
+          'tls' => {
+            'server_certificate' => 'some-cert',
+            'server_key' => 'some-key',
+            'server_name' => 'some-server-name'
+          },
+          'endpoint_credentials' => {
+            'username' => 'some-username',
+            'password' => 'some-password'
+          }
+        }
+      }}
+
+      it 'renders the xtrabackup path' do
+        tpl_output = template.render(spec)
+        tpl_yaml = YAML.load(tpl_output)
+        expect(tpl_yaml['Command']).to eq('VALUE/xtrabackup --defaults-file=/var/vcap/jobs/mysql/config/mylogin.cnf --backup --stream=tar --target-dir=/var/vcap/store/xtrabackup_tmp/')
+      end
+    end
+
     context('when mutual tls is not set') do
       context('when basic-auth is not provided') do
         let(:spec) {{
