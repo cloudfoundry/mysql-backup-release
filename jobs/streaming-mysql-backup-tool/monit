@@ -1,6 +1,6 @@
 <% if p("cf-mysql-backup.disabled") == false %>
 check process streaming-mysql-backup-tool
-  with pidfile /var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid
+  with pidfile /var/vcap/sys/run/bpm/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid
   start program "/var/vcap/jobs/bpm/bin/bpm start streaming-mysql-backup-tool" with timeout 60 seconds
   stop program "/var/vcap/jobs/bpm/bin/bpm stop streaming-mysql-backup-tool" with timeout 10 seconds
   group vcap
