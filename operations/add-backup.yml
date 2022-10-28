@@ -12,12 +12,6 @@
     version: latest
 
 - type: replace
-  path: /addons/name=bpm?
-  value:
-    name: bpm
-    jobs: [{name: bpm, release: bpm}]
-
-- type: replace
   path: /releases/name=service-backup?
   value:
     name: service-backup
