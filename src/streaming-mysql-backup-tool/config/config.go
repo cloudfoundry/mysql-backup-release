@@ -18,7 +18,6 @@ import (
 type Config struct {
 	Command     string      `yaml:"Command" validate:"nonzero"`
 	Port        int         `yaml:"Port" validate:"nonzero"`
-	PidFile     string      `yaml:"PidFile" validate:"nonzero"`
 	Credentials Credentials `yaml:"Credentials" validate:"nonzero"`
 	TLS         TLSConfig   `yaml:"TLS"`
 	Logger      lager.Logger
