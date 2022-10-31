@@ -75,7 +75,7 @@ func checkPidFileIsGone() bool {
 		"ssh",
 		"mysql/0",
 		"-c",
-		"! [[ -e /var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid ]]",
+		"! [[ -e /var/vcap/sys/run/bpm/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid ]]",
 	)
 	Expect(err).NotTo(HaveOccurred())
 
