@@ -16,7 +16,6 @@
   end
 
   config = {
-    "PidFile" => "/var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid",
     "Command" => p("cf-mysql-backup.xtrabackup_path")+"/xtrabackup --defaults-file=#{defaults_file} --backup --stream=tar --target-dir=/var/vcap/store/xtrabackup_tmp/",
     "Port" => p('cf-mysql-backup.backup-server.port'),
     "Credentials" => credentials,

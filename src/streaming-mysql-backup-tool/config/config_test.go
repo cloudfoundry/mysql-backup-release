@@ -51,7 +51,6 @@ var _ = Describe("Config", func() {
 		configurationTemplate := `{
 				"Command": %q,
 				"Port": 8081,
-				"PidFile": fakePath,
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
