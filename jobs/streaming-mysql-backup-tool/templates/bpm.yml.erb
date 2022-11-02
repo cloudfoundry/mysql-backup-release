@@ -4,12 +4,7 @@ processes:
   args:
     - -configPath=/var/vcap/jobs/streaming-mysql-backup-tool/config/streaming-mysql-backup-tool.yml
   additional_volumes:
-    - path: /var/vcap/sys
-      mount_only: true
-      writable: true
     - path: /var/vcap/store
-      writable: false
-    - path: /var/vcap/store/xtrabackup_tmp
       writable: true
   env:
       PATH: /bin:/usr/bin:/sbin:/usr/sbin:<%= p('cf-mysql-backup.xtrabackup_path') %>/xtrabackup/bin
