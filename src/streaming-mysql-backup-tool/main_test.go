@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"code.cloudfoundry.org/tlsconfig"
@@ -60,6 +61,7 @@ var _ = Describe("Main", func() {
 		serverKeyPEM  []byte
 
 		backupServerConfig       string
+		pidFile                  string
 		backupServerPort         int
 		backupServerCmd          string
 		clientCA                 string
@@ -80,6 +82,7 @@ var _ = Describe("Main", func() {
 		tmpDir, err = ioutil.TempDir("", "backup-tool-tests")
 		Expect(err).ToNot(HaveOccurred())
 
+		pidFile = tmpFilePath("pid")
 		backupServerPort = int(49000 + GinkgoParallelNode())
 		backupServerCmd = fmt.Sprintf("echo -n %s", expectedResponseBody)
 		enableMutualTLS = false
@@ -90,6 +93,7 @@ var _ = Describe("Main", func() {
 		configYAML, err := yaml.Marshal(&config.Config{
 			Port:    backupServerPort,
 			Command: backupServerCmd,
+			PidFile: pidFile,
 			Credentials: config.Credentials{
 				Username: "username",
 				Password: "password",
@@ -147,6 +151,8 @@ var _ = Describe("Main", func() {
 		AfterEach(func() {
 			session.Kill()
 			session.Wait()
+			err := os.Remove(pidFile)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("When the client uses TLS", func() {
@@ -156,6 +162,27 @@ var _ = Describe("Main", func() {
 					_, err := httpClient.Get(backupUrl)
 					return err
 				}).Should(Succeed())
+			})
+
+			Describe("Writing PID file", func() {
+				var (
+					pidFilePath string
+				)
+				BeforeEach(func() {
+					pidFilePath = pidFile
+				})
+
+				It("Writes its PID file to the location specified ", func() {
+					Expect(pidFilePath).To(BeAnExistingFile())
+				})
+
+				It("Checks whether the PID file content matches the process ID", func() {
+					fileBytes, err := ioutil.ReadFile(pidFile)
+					Expect(err).ToNot(HaveOccurred())
+					actualPid, err := strconv.Atoi(string(fileBytes))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(actualPid).To(Equal(command.Process.Pid))
+				})
 			})
 
 			Describe("Initiating a backup", func() {
@@ -338,6 +365,8 @@ var _ = Describe("Main", func() {
 			AfterEach(func() {
 				session.Kill()
 				session.Wait()
+				err := os.Remove(pidFile)
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			When("the client does not provide a certificate", func() {
@@ -496,6 +525,8 @@ var _ = Describe("Main", func() {
 			AfterEach(func() {
 				session.Kill()
 				session.Wait()
+				err := os.Remove(pidFile)
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			Context("When the client uses TLS", func() {
@@ -505,6 +536,27 @@ var _ = Describe("Main", func() {
 						_, err := httpClient.Get(backupUrl)
 						return err
 					}).Should(Succeed())
+				})
+
+				Describe("Writing PID file", func() {
+					var (
+						pidFilePath string
+					)
+					BeforeEach(func() {
+						pidFilePath = pidFile
+					})
+
+					It("Writes its PID file to the location specified ", func() {
+						Expect(pidFilePath).To(BeAnExistingFile())
+					})
+
+					It("Checks whether the PID file content matches the process ID", func() {
+						fileBytes, err := ioutil.ReadFile(pidFile)
+						Expect(err).ToNot(HaveOccurred())
+						actualPid, err := strconv.Atoi(string(fileBytes))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(actualPid).To(Equal(command.Process.Pid))
+					})
 				})
 
 				Describe("Initiating a backup", func() {

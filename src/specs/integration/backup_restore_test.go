@@ -358,6 +358,7 @@ func createUntrustedClientCertificates(credentials *TestCredentials) {
 
 func backupServerConfig(credentials TestCredentials) string {
 	cfg := map[string]interface{}{
+		"PidFile": "/tmp/streaming-mysql-backup-tool.pid",
 		"Command": "xtrabackup --user=root --backup --stream=tar --target-dir=/tmp",
 		"Port":    8081,
 		"TLS": map[string]interface{}{

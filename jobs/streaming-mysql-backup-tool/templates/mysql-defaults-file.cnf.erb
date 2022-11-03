@@ -2,5 +2,5 @@
 [client]
 user        = "<%= user.p('mysql_backup_username') %>"
 password    = "<%= user.p('mysql_backup_password') %>"
-host        = "127.0.0.1"
+socket      = "<%= user.p('mysql_socket')%>"
 <% end %>

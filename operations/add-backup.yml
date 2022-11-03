@@ -6,19 +6,6 @@
     version: latest
 
 - type: replace
-  path: /releases/name=bpm?
-  value:
-    name: bpm
-    version: latest
-    url: https://bosh.io/d/github.com/cloudfoundry/bpm-release
-
-- type: replace
-  path: /addons?/name=bpm?
-  value:
-    name: bpm
-    jobs: [{name: bpm, release: bpm}]
-
-- type: replace
   path: /releases/name=service-backup?
   value:
     name: service-backup
