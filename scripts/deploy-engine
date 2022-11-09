@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset -o xtrace
+
+: "${MYSQL_ENGINE:=pxc}"
+: "${MYSQL_ENGINE_VERSION:=latest}"
+: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE}-prom}"
+: "${STEMCELL:=ubuntu-xenial}"
+
+engine_deploy_args=(--no-redact)
+
+case "${MYSQL_ENGINE}" in
+pxc)
+  engine_deploy_args+=(operations/pxc/"${MYSQL_ENGINE}-deployment".yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
+#  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc.yml)
+  ;;
+dedicated-mysql)
+  ;;
+*)
+  echo >&2 "Unknown ENGINE=$MYSQL_ENGINE"
+  exit 1
+  ;;
+esac
+
+bosh deploy --no-redact --non-interactive \
+  --ops-file=operations/add-backup.yml \
+  --ops-file=operations/use-mtls.yml \
+  --ops-file=operations/backup-from-inactive-node.yml \
+  --deployment="${DEPLOYMENT_NAME}" \
+  --ops-file=operations/deployment-name.yml \
+  --var=deployment_name="${DEPLOYMENT_NAME}" \
+  --ops-file=operations/create-dev-release.yml \
+  "${engine_deploy_args[@]}" \
+  "$@"
+#  --ops-file=operations/engine-version.yml \
+#  --var=engine="${MYSQL_ENGINE}" \
+#  --var=engine_version="${MYSQL_ENGINE_VERSION}" \

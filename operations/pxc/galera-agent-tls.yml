@@ -1,0 +1,25 @@
+---
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=galera-agent/properties/endpoint_tls?
+  value:
+    enabled: true
+    ca: ((cf_mysql_mysql_galera_healthcheck_endpoint_tls.ca))
+    certificate: ((cf_mysql_mysql_galera_healthcheck_endpoint_tls.certificate))
+    private_key: ((cf_mysql_mysql_galera_healthcheck_endpoint_tls.private_key))
+    server_name: galera_healthcheck_endpoint_tls
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=galera-agent/properties/port?
+  value: 9201
+
+- type: replace
+  path: /variables/name=cf_mysql_mysql_galera_healthcheck_endpoint_tls?
+  value:
+    name: cf_mysql_mysql_galera_healthcheck_endpoint_tls
+    type: certificate
+    update_mode: converge
+    options:
+      ca: pxc_galera_ca
+      extended_key_usage: ["server_auth"]
+      common_name: galera_healthcheck_endpoint_tls
+      alternative_names: ["galera_healthcheck_endpoint_tls", "e2e-tests"]
