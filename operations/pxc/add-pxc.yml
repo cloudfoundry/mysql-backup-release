@@ -1,0 +1,88 @@
+---
+- type: replace
+  path: /variables/name=mysql_admin_password?
+  value:
+    name: mysql_admin_password
+    type: password
+
+- type: replace
+  path: /variables/name=pxc_galera_ca?
+  value:
+    name: pxc_galera_ca
+    type: certificate
+    options:
+      is_ca: true
+      common_name: pxc_galera_ca
+
+- type: replace
+  path: /variables/name=pxc_server_ca?
+  value:
+    name: pxc_server_ca
+    type: certificate
+    options:
+      is_ca: true
+      common_name: pxc_server_ca
+
+- type: replace
+  path: /variables/name=galera_server_certificate?
+  value:
+    name: galera_server_certificate
+    type: certificate
+    options:
+      ca: pxc_galera_ca
+      extended_key_usage: [ "server_auth", "client_auth" ]
+      common_name: galera_server_certificate
+
+- type: replace
+  path: /variables/name=mysql_server_certificate?
+  value:
+    name: mysql_server_certificate
+    type: certificate
+    options:
+      ca: pxc_server_ca
+      common_name: mysql_server_certificate
+
+- type: replace
+  path: /variables/name=smoke_tests_db_password?
+  value:
+    name: smoke_tests_db_password
+    type: password
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/xtrabackup_path?
+  value: /var/vcap/packages/percona-xtrabackup/bin
+
+- type: replace
+  path: /variables/name=mysql_backup_password?
+  value:
+    name: mysql_backup_password
+    type: password
+
+- type: replace
+  path: /instance_groups/name=mysql?/jobs/name=pxc-mysql?
+  value:
+    name:    pxc-mysql
+    release: pxc
+    properties:
+      admin_username: admin
+      admin_password: ((mysql_admin_password))
+      mysql_backup_password: ((mysql_backup_password))
+      tls:
+        required: true
+        server: ((mysql_server_certificate))
+        galera: ((galera_server_certificate))
+
+- type: replace
+  path: /instance_groups/name=mysql?/jobs/name=smoke-tests?
+  value:
+    name: smoke-tests
+    release: pxc
+    properties:
+      db_password: ((smoke_tests_db_password))
+
+- type: replace
+  path: /instance_groups/name=mysql?/jobs/name=smoke-tests-user?
+  value:
+    name: smoke-tests-user
+    release: pxc
+

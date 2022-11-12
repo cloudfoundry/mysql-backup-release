@@ -4,19 +4,18 @@ set -o errexit -o nounset -o xtrace
 
 : "${MYSQL_ENGINE:=pxc}"
 : "${MYSQL_ENGINE_VERSION:=latest}"
-: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE}-prom}"
+: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE}-backup}"
 : "${STEMCELL:=ubuntu-xenial}"
 
 engine_deploy_args=(--no-redact)
 
 case "${MYSQL_ENGINE}" in
 pxc)
-  engine_deploy_args+=(operations/pxc/"${MYSQL_ENGINE}-deployment".yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE}".yml)
   engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
 #  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc.yml)
+#  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
   ;;
 dedicated-mysql)
   ;;
@@ -27,15 +26,15 @@ dedicated-mysql)
 esac
 
 bosh deploy --no-redact --non-interactive \
-  --ops-file=operations/add-backup.yml \
-  --ops-file=operations/use-mtls.yml \
+    operations/mysql_with_backup.yml \
+  --ops-file=operations/create-dev-release.yml \
   --ops-file=operations/backup-from-inactive-node.yml \
   --deployment="${DEPLOYMENT_NAME}" \
   --ops-file=operations/deployment-name.yml \
   --var=deployment_name="${DEPLOYMENT_NAME}" \
-  --ops-file=operations/create-dev-release.yml \
+  --ops-file=operations/engine-version.yml \
+  --var=engine="${MYSQL_ENGINE}" \
+  --var=engine_version="${MYSQL_ENGINE_VERSION}" \
   "${engine_deploy_args[@]}" \
   "$@"
-#  --ops-file=operations/engine-version.yml \
-#  --var=engine="${MYSQL_ENGINE}" \
-#  --var=engine_version="${MYSQL_ENGINE_VERSION}" \
+#  --ops-file=operations/use-mtls.yml \
