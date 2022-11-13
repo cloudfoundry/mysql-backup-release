@@ -1,0 +1,59 @@
+---
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=mysql?
+  value:
+    name:    mysql
+    release: dedicated-mysql
+    properties:
+      admin_password:                ((mysql_admin_password))
+      # agent and backups password are currently required in dedicated-mysql-release
+      agent_password:                ((placeholder_password))
+      broker_admin_password:         ((broker_admin_password))
+      default_schema:                default_schema
+      enable_lower_case_table_names: false
+      mysql_backup_password:         ((mysql_backup_password))
+      mysql_backup_username:          mysql-backup
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=mysql?
+  value:
+    name: streaming-mysql-backup-client
+    release: mysql-backup
+    properties:
+      cf-mysql-backup:
+        backup_local_node_only: true
+        endpoint_credentials:
+          username: ((cf_mysql_backup_endpoint_credentials_username))
+          password: ((cf_mysql_backup_endpoint_credentials_password))
+        symmetric_key: ((cf_mysql_backup_symmetric_key))
+        tls:
+          ca_certificate: ((cf_mysql_backup_cert.ca))
+          server_name: &server_name streaming_mysql_backup_tool
+
+- type: replace
+  path: /variables/name=placeholder_password?
+  value: {name: placeholder_password, type: password}
+
+- type: replace
+  path: /variables/name=mysql_admin_password?
+  value:
+    name: mysql_admin_password
+    type: password
+
+- type: replace
+  path: /variables/name=cf_mysql_backup_endpoint_credentials_username?
+  value:
+    name: cf_mysql_backup_endpoint_credentials_username
+    type: password
+
+- type: replace
+  path: /variables/name=cf_mysql_backup_endpoint_credentials_password?
+  value:
+    name: cf_mysql_backup_endpoint_credentials_password
+    type: password
+
+- type: replace
+  path: /variables/name=cf_mysql_backup_symmetric_key?
+  value:
+    name: cf_mysql_backup_symmetric_key
+    type: password
