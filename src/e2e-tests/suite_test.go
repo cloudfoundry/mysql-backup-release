@@ -17,7 +17,7 @@ import (
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "PXC E2E Tests")
+	RunSpecs(t, "MySQL Backup E2E Tests")
 }
 
 var (

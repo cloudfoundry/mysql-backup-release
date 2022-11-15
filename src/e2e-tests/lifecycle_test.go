@@ -1,7 +1,6 @@
 package e2e_tests
 
 import (
-	"database/sql"
 	"log"
 	"os/exec"
 	"strings"
@@ -47,16 +46,11 @@ func runBoshCommand(deployment string, args ...string) (*gexec.Session, error) {
 var _ = Describe("Streaming MySQL Backup Tool Lifecycle", Ordered, Label("life-cycle"), func() {
 
 	var (
-		db             *sql.DB
 		deploymentName string
 	)
 
 	BeforeAll(func() {
 		deploymentName = "mysql-backup-release-lifecycle-test-" + uuid.New().String()
-
-		//Expect(bosh.DeployPXC(deploymentName,
-		//	bosh.Operation(`test/seed-test-user.yml`),
-		//)).To(Succeed())
 
 		Expect(cmd.RunCustom(
 			cmd.Setup(
@@ -66,17 +60,9 @@ var _ = Describe("Streaming MySQL Backup Tool Lifecycle", Ordered, Label("life-c
 			"./scripts/deploy-engine",
 		)).To(Succeed())
 
-		// Skip running smoke tests for this test group because smoke-test write to the database and generates GTIDs,
-		// violating an assumption of this test.
-
-		proxyIPs, err := bosh.InstanceIPs(deploymentName, bosh.MatchByInstanceGroup("proxy"))
+		instanceAddresses, err := bosh.InstanceIPs(deploymentName, bosh.MatchByInstanceGroup("mysql"))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(proxyIPs).To(HaveLen(2))
-
-		db, err = sql.Open("mysql", "test-admin:integration-tests@tcp("+proxyIPs[0]+")/?tls=skip-verify")
-		Expect(err).NotTo(HaveOccurred())
-		db.SetMaxIdleConns(0)
-		db.SetMaxOpenConns(1)
+		Expect(instanceAddresses).NotTo(BeEmpty(), `Expected a set of IP addresses to be computed for the deployment, but it was missing`)
 	})
 
 

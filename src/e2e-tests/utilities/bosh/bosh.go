@@ -239,11 +239,24 @@ func Logs(deploymentName, instanceSpec, filter string) (*bytes.Buffer, error) {
 	return &output, err
 }
 
-func Scp(deploymentName, sourcePath, destPath string) error {
-	return cmd.Run("bosh",
-		"--deployment="+deploymentName,
-		"scp",
-		sourcePath,
-		destPath,
-	)
+func Scp(deploymentName, sourcePath, destPath string, args...string) error {
+	defaultArgs := []string{"--deployment="+deploymentName, "scp"}
+	defaultArgs = append(defaultArgs, args...)
+	defaultArgs = append(defaultArgs, sourcePath)
+	defaultArgs = append(defaultArgs, destPath)
+	return cmd.Run("bosh", defaultArgs...)
+}
+
+func Stop(deploymentName,  instanceSpec string, args...string) error {
+	defaultArgs := []string{"-d", deploymentName, "stop"}
+	defaultArgs = append(defaultArgs, args...)
+	defaultArgs = append(defaultArgs, instanceSpec)
+	return cmd.Run("bosh", defaultArgs...)
+}
+
+func Start(deploymentName,  instanceSpec string, args...string) error {
+	defaultArgs := []string{"-d", deploymentName, "start"}
+	defaultArgs = append(defaultArgs, args...)
+	defaultArgs = append(defaultArgs, instanceSpec)
+	return cmd.Run("bosh", defaultArgs...)
 }
