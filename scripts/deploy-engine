@@ -50,4 +50,3 @@ bosh deploy --no-redact --non-interactive \
   --var=stemcell_os="${STEMCELL}" \
   "${engine_deploy_args[@]}" \
   "$@"
-#  --ops-file=operations/use-mtls.yml \

@@ -21,10 +21,11 @@ func TestE2E(t *testing.T) {
 }
 
 var (
-	proxyDialer proxy.DialContextFunc
-	backupPath string
+	proxyDialer        proxy.DialContextFunc
+	backupDir          string
 	myLoginCnfFilePath string
-	mysqlDatdir string
+	mysqlDatdir        string
+	localBackupDir     string
 )
 
 var _ = BeforeSuite(func() {
@@ -54,8 +55,9 @@ var _ = BeforeSuite(func() {
 		})
 	}
 
-	backupPath = "/var/vcap/store/mysql-backups/"
-	if mysqlEngine := os.Getenv("MYSQL_ENGINE"); strings.Contains(mysqlEngine,"dedicated-mysql") {
+	backupDir = "/var/vcap/store/mysql-backups/"
+	localBackupDir = "/tmp/mysql-backups"
+	if mysqlEngine := os.Getenv("MYSQL_ENGINE"); strings.Contains(mysqlEngine, "dedicated-mysql") {
 		mysqlDatdir = "/var/vcap/store/mysql/data"
 		myLoginCnfFilePath = "/var/vcap/jobs/mysql/config/mylogin.cnf"
 	} else {

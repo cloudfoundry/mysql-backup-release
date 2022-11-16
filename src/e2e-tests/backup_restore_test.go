@@ -2,6 +2,8 @@ package e2e_tests
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"e2e-tests/utilities/bosh"
 	"e2e-tests/utilities/cmd"
@@ -15,6 +17,7 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 	var (
 		deploymentName string
+		backupTmpDir   string
 	)
 
 	BeforeAll(func() {
@@ -43,11 +46,19 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 	When("mutual TLS is not enabled", func() {
 
+		BeforeEach(func() {
+			var err error
+			By("Creating a /tmp/mysql-backups directory on the local machine")
+			backupTmpDir, err = os.MkdirTemp("","mysql-backups")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("can successfully perform the backup / restore workflow", func() {
+
 			By("Deleting any previous backups")
 			_, err := bosh.RemoteCommand(deploymentName,
 				"backup-prepare",
-				fmt.Sprintf("sudo rm -f %s*", backupPath))
+				fmt.Sprintf("sudo rm -f %s*", backupDir))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Writing some test data")
@@ -73,9 +84,8 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 			By("Fetching the backup artifact name")
 			backupArtifactName, err := bosh.RemoteCommand(deploymentName, "backup-prepare",
-				fmt.Sprintf("sudo ls %s*.gpg | head -1 | awk '{print $1}' | xargs -n 1 basename", backupPath))
+				fmt.Sprintf("sudo ls %s*.gpg | head -1 | awk '{print $1}' | xargs -n 1 basename", backupDir))
 			Expect(err).NotTo(HaveOccurred())
-
 
 			By("Fetching the symmetric key")
 			symmetricKey, err := credhub.GetCredhubPassword("/" + deploymentName + "/cf_mysql_backup_symmetric_key")
@@ -83,13 +93,14 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 			By("Fetching the backup artifact")
 			Expect(bosh.Scp(deploymentName,
-				fmt.Sprintf("backup-prepare:%s", backupPath+backupArtifactName),
-				"/tmp/mysql-backups/"+backupArtifactName, "-r", "-l", "root")).To(Succeed())
-
+				fmt.Sprintf("backup-prepare:%s", backupDir+backupArtifactName),
+				filepath.Join(backupTmpDir, backupArtifactName), "-r", "-l", "root")).To(Succeed())
 
 			By("Copying the backup artifact back to mysql/0")
 			Eventually(
-				bosh.Scp(deploymentName, "/tmp/mysql-backups/"+backupArtifactName, "mysql/0:/tmp/", "-l", "root "),
+				bosh.Scp(deploymentName,
+					filepath.Join(backupTmpDir, backupArtifactName),
+					"mysql/0:/tmp/", "-l", "root "),
 				"10m",
 			).Should(Succeed())
 
@@ -101,14 +112,16 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 			//	"--compress-algo", "zip", "--cipher-algo", "AES256",
 			//	"--output", "/tmp/mysql-backup.tar", "--passphrase",
 			//	symmetricKey, "--decrypt", "/tmp/"+backupArtifactName}
-			bosh.RemoteCommand(deploymentName, "mysql/0",
+			_, err = bosh.RemoteCommand(deploymentName, "mysql/0",
 				"gpg --batch --yes --no-tty --compress-algo zip --cipher-algo AES256 --output " +
 				"/tmp/mysql-backup.tar --passphrase " + symmetricKey +
 				" --decrypt /tmp/"+backupArtifactName,
 			)
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Deleting the MySQL datadir")
-			bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo rm -rf %s/*", mysqlDatdir))
+			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo rm -rf %s/*", mysqlDatdir))
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Restoring MySQL from the backup")
 			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo tar -xvf /tmp/mysql-backup.tar -C %s/", mysqlDatdir))
@@ -129,6 +142,11 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 				fmt.Sprintf("sudo mysql --defaults-file=%s -sse 'SELECT * from test.foo;'", myLoginCnfFilePath))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(out).To(Equal("42"))
+		})
+
+		AfterEach(func() {
+			By("Deleting the /tmp/mysql-backups directory on the local machine")
+			Expect(os.RemoveAll(backupTmpDir)).To(Succeed())
 		})
 	})
 })
