@@ -82,6 +82,9 @@ variables:
       is_ca: true
       common_name: generated-backup-ca
 
+  - name: mysql_backup_password
+    type: password
+
   - name: cf_mysql_backup_cert
     type: certificate
     update_mode: converge

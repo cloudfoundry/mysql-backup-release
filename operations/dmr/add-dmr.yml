@@ -15,7 +15,7 @@
       mysql_backup_username:          mysql-backup
 
 - type: replace
-  path: /instance_groups/name=mysql/jobs/name=mysql?
+  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-client?
   value:
     name: streaming-mysql-backup-client
     release: mysql-backup
@@ -28,7 +28,7 @@
         symmetric_key: ((cf_mysql_backup_symmetric_key))
         tls:
           ca_certificate: ((cf_mysql_backup_cert.ca))
-          server_name: &server_name streaming_mysql_backup_tool
+          server_name: streaming_mysql_backup_tool
 
 - type: replace
   path: /variables/name=placeholder_password?

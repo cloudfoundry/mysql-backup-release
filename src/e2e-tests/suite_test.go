@@ -22,6 +22,9 @@ func TestE2E(t *testing.T) {
 
 var (
 	proxyDialer proxy.DialContextFunc
+	backupPath string
+	myLoginCnfFilePath string
+	mysqlDatdir string
 )
 
 var _ = BeforeSuite(func() {
@@ -49,5 +52,14 @@ var _ = BeforeSuite(func() {
 		mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
 			return proxyDialer(ctx, "tcp", addr)
 		})
+	}
+
+	backupPath = "/var/vcap/store/mysql-backups/"
+	if mysqlEngine := os.Getenv("MYSQL_ENGINE"); strings.Contains(mysqlEngine,"dedicated-mysql") {
+		mysqlDatdir = "/var/vcap/store/mysql/data"
+		myLoginCnfFilePath = "/var/vcap/jobs/mysql/config/mylogin.cnf"
+	} else {
+		mysqlDatdir = "/var/vcap/store/pxc-mysql"
+		myLoginCnfFilePath = "/var/vcap/jobs/pxc-mysql/config/mylogin.cnf"
 	}
 })

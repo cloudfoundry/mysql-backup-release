@@ -79,17 +79,3 @@
     release: pxc
     properties:
       db_password: ((smoke_tests_db_password))
-
-- type: replace
-  path: /instance_groups/name=mysql?/jobs/name=smoke-tests-user?
-  value:
-    name: smoke-tests-user
-    release: pxc
-
-- path: /instance_groups/name=mysql/jobs/name=pxc-mysql/properties/seeded_users?/test-admin?
-  type: replace
-  value:
-    role: admin
-    host: any
-    password: "integration-tests"
-
