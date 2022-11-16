@@ -1,0 +1,15 @@
+- path: /instance_groups/name=mysql/jobs/name=pxc-mysql/properties/seeded_users?/test-admin?
+  type: replace
+  value:
+    role: admin
+    host: any
+    password: "integration-tests"
+
+- path: /instance_groups/name=mysql/jobs/name=pxc-mysql/properties/seeded_users?/smoke-tests-user
+  type: replace
+  value:
+    name: smoke-tests-user
+    role: schema-admin
+    schema: pxc_release_test_db
+    password: ((smoke_tests_db_password))
+    host: any

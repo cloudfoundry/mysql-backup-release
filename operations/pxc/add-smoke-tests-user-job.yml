@@ -1,0 +1,6 @@
+---
+- type: replace
+  path: /instance_groups/name=mysql?/jobs/name=smoke-tests-user?
+  value:
+    name: smoke-tests-user
+    release: pxc

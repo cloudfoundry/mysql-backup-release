@@ -2,17 +2,28 @@
 
 set -o errexit -o nounset -o xtrace
 
-: "${MYSQL_ENGINE:=pxc}"
+: "${MYSQL_ENGINE:="pxc-8.0"}"
 : "${MYSQL_ENGINE_VERSION:=latest}"
-: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE}-backup}"
+: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE%-8.0}-backup}"
 : "${STEMCELL:=ubuntu-jammy}"
 
 engine_deploy_args=(--no-redact)
 
 case "${MYSQL_ENGINE}" in
 pxc)
-  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE}".yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE%-8.0}".yml)
   engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/add-smoke-tests-user-job.yml)
+  engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
+#  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
+#  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  ;;
+pxc-8.0)
+  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE%-8.0}".yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/seeded-users.yml)
+  engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
 #  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
 #  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
@@ -29,12 +40,11 @@ esac
 bosh deploy --no-redact --non-interactive \
     operations/mysql_with_backup.yml \
   --ops-file=operations/create-dev-release.yml \
-  --ops-file=operations/backup-from-inactive-node.yml \
   --deployment="${DEPLOYMENT_NAME}" \
   --ops-file=operations/deployment-name.yml \
   --var=deployment_name="${DEPLOYMENT_NAME}" \
   --ops-file=operations/engine-version.yml \
-  --var=engine="${MYSQL_ENGINE}" \
+  --var=engine="${MYSQL_ENGINE%-8.0}" \
   --var=engine_version="${MYSQL_ENGINE_VERSION}" \
   --ops-file=operations/stemcell.yml \
   --var=stemcell_os="${STEMCELL}" \
