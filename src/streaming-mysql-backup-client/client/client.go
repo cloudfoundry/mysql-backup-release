@@ -224,6 +224,7 @@ func (c *Client) downloadAndUntarBackup(ip string) error {
 
 	url := fmt.Sprintf("https://%s:%d/backup", ip, c.config.BackupServerPort)
 	err := c.downloader.DownloadBackup(url, tarpit.NewUntarStreamer(c.prepareDirectory))
+	//err := c.downloader.DownloadBackup(url, xbstream.NewXbstreamer(c.prepareDirectory))
 	if err != nil {
 		c.logger.Error("DownloadBackup failed", err)
 		return err
