@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+: "${XTRABACKUP_VERSION:=8.0}"
+
+declare -a run_args=(
+  --interactive
+  --rm
+  --user=root
+)
+
+while getopts ":C:" opt; do
+  case "$opt" in
+  C)
+    if [[ -d $OPTARG ]]; then
+      run_args+=(--volume="${OPTARG}:${OPTARG}")
+    fi
+    ;;
+  *) ;;
+  esac
+done
+
+docker run \
+  "${run_args[@]}" \
+  "percona/percona-xtrabackup:${XTRABACKUP_VERSION}" \
+  xbstream "$@"
