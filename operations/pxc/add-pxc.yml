@@ -50,7 +50,7 @@
 
 - type: replace
   path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/xtrabackup_path?
-  value: /var/vcap/packages/percona-xtrabackup/bin
+  value: /var/vcap/packages/percona-xtrabackup-8.0/bin
 
 - type: replace
   path: /variables/name=mysql_backup_password?
