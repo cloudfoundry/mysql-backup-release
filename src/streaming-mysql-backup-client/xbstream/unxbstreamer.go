@@ -7,16 +7,17 @@ import (
 )
 
 type UnXbStreamer struct {
-	destDir   string
+	destDir string
 }
 
 func NewUnXbStreamer(destinationDir string) UnXbStreamer {
 	return UnXbStreamer{
-		destDir:   destinationDir,
+		destDir: destinationDir,
 	}
 }
 
 func (us UnXbStreamer) WriteStream(reader io.Reader) error {
+	// TODO: remove hardcoded path
 	cmd := exec.Command("/var/vcap/packages/percona-xtrabackup-8.0/bin/xbstream", "-x", "-C", us.destDir)
 	cmd.Stdin = reader
 	output, err := cmd.CombinedOutput()
