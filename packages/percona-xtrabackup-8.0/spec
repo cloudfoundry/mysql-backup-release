@@ -1,0 +1,8 @@
+---
+name: percona-xtrabackup-8.0
+
+dependencies: []
+
+files:
+- percona-xtrabackup-8.0.*-Linux-x86_64.*.tar.gz
+- libev-*.tar.gz

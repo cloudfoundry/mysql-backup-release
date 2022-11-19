@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset
+
+main() {
+  install_build_dependencies
+  unpack_distribution
+}
+
+install_build_dependencies() {
+  tar -xf libev-*.tar.gz
+  cd libev-*/
+  ./configure --prefix="${BOSH_INSTALL_TARGET}" --libdir="${BOSH_INSTALL_TARGET}/lib/private" --disable-static
+  make -j $(nproc) install-exec DESTDIR="${BOSH_INSTALL_TARGET}"
+  cd -
+}
+
+unpack_distribution() {
+  tar --strip-components=1 --directory="${BOSH_INSTALL_TARGET}" -xf percona-xtrabackup-8.0.*-Linux-x86_64.*.tar.gz
+}
+
+main
