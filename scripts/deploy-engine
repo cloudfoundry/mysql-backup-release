@@ -15,18 +15,16 @@ pxc)
   engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/add-smoke-tests-user-job.yml)
   engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
-#  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
-#  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
   ;;
 pxc-8.0)
   engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE%-8.0}".yml)
   engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/seeded-users.yml)
   engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
-#  engine_deploy_args+=(--ops-file=operations/pxc/add-proxy-load-balancer.yml)
   engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
-#  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
   ;;
 dedicated-mysql)
   engine_deploy_args+=(--ops-file=operations/dmr/add-dmr.yml)
@@ -48,5 +46,6 @@ bosh deploy --no-redact --non-interactive \
   --var=engine_version="${MYSQL_ENGINE_VERSION}" \
   --ops-file=operations/stemcell.yml \
   --var=stemcell_os="${STEMCELL}" \
+  --ops-file=operations/use-mtls.yml \
   "${engine_deploy_args[@]}" \
   "$@"

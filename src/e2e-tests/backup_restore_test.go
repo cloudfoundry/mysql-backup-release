@@ -44,7 +44,7 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 		Expect(bosh.DeleteDeployment(deploymentName)).To(Succeed())
 	})
 
-	When("mutual TLS is not enabled", func() {
+	When("mutual TLS is enabled", func() {
 
 		BeforeEach(func() {
 			var err error
