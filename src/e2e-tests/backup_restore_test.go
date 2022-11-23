@@ -97,11 +97,10 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 				filepath.Join(backupTmpDir, backupArtifactName), "-r", "-l", "root")).To(Succeed())
 
 			By("Copying the backup artifact back to mysql/0")
-			Eventually(
+			Expect(
 				bosh.Scp(deploymentName,
 					filepath.Join(backupTmpDir, backupArtifactName),
 					"mysql/0:/tmp/", "-l", "root "),
-				"10m",
 			).Should(Succeed())
 
 			By("Stopping MySQL")
