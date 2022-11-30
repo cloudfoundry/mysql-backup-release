@@ -7,24 +7,29 @@ set -o errexit -o nounset -o xtrace
 : "${DEPLOYMENT_NAME:=${MYSQL_ENGINE%-8.0}-backup}"
 : "${STEMCELL:=ubuntu-jammy}"
 
-engine_deploy_args=(--no-redact)
+declare -a engine_deploy_args
 
 case "${MYSQL_ENGINE}" in
 pxc)
-  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE%-8.0}".yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/add-smoke-tests-user-job.yml)
-  engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  engine_deploy_args+=(
+    --ops-file=operations/pxc/add-pxc.yml
+    --ops-file=operations/pxc/use-clustered.yml
+    --ops-file=operations/pxc/add-smoke-tests-user-job.yml
+    --ops-file=operations/backup-from-inactive-node.yml
+    --ops-file=operations/pxc/enable-remote-admin-access.yml
+    --ops-file=operations/pxc/galera-agent-tls.yml
+  )
   ;;
 pxc-8.0)
-  engine_deploy_args+=(--ops-file=operations/pxc/"add-${MYSQL_ENGINE%-8.0}".yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/use-clustered.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/seeded-users.yml)
-  engine_deploy_args+=(--ops-file=operations/backup-from-inactive-node.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/enable-remote-admin-access.yml)
-  engine_deploy_args+=(--ops-file=operations/pxc/galera-agent-tls.yml)
+  engine_deploy_args+=(
+    --ops-file=operations/pxc/add-pxc.yml
+    --ops-file=operations/pxc/use-pxc80.yml
+    --ops-file=operations/pxc/use-clustered.yml
+    --ops-file=operations/pxc/seeded-users.yml
+    --ops-file=operations/backup-from-inactive-node.yml
+    --ops-file=operations/pxc/enable-remote-admin-access.yml
+    --ops-file=operations/pxc/galera-agent-tls.yml
+  )
   ;;
 dedicated-mysql)
   engine_deploy_args+=(--ops-file=operations/dmr/add-dmr.yml)
@@ -36,7 +41,7 @@ dedicated-mysql)
 esac
 
 bosh deploy --no-redact --non-interactive \
-    operations/mysql_with_backup.yml \
+  operations/mysql_with_backup.yml \
   --ops-file=operations/create-dev-release.yml \
   --deployment="${DEPLOYMENT_NAME}" \
   --ops-file=operations/deployment-name.yml \

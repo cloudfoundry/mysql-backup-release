@@ -9,6 +9,7 @@ templates:
 
 packages:
     - xtrabackup
+    - percona-xtrabackup-8.0
     - streaming-mysql-backup-client
 
 consumes:
@@ -56,3 +57,6 @@ properties:
       description: 'CA certificate'
     cf-mysql-backup.tls.server_name:
       description: 'Common Name of the server certificate'
+    cf-mysql-backup.xtrabackup_path:
+      description: 'The path to the bin folder containing the binary. For use with pxc-release, use `/var/vcap/packages/percona-xtrabackup/bin`. The default is for cf-mysql-release'
+      default: /var/vcap/packages/xtrabackup/bin

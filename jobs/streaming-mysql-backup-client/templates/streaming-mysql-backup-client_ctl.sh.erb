@@ -20,7 +20,7 @@ function cleanup {
 trap cleanup EXIT
 
 # add xtrabackup to path
-export PATH=$PATH:/var/vcap/packages/xtrabackup/bin
+export PATH=<%= p('cf-mysql-backup.xtrabackup_path') %>:$PATH
 
 log_dir=/var/vcap/sys/log/streaming-mysql-backup-client
 mkdir -p $log_dir

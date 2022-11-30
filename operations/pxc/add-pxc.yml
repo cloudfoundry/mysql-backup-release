@@ -49,10 +49,6 @@
     type: password
 
 - type: replace
-  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/xtrabackup_path?
-  value: /var/vcap/packages/percona-xtrabackup-8.0/bin
-
-- type: replace
   path: /variables/name=mysql_backup_password?
   value:
     name: mysql_backup_password
@@ -79,3 +75,11 @@
     release: pxc
     properties:
       db_password: ((smoke_tests_db_password))
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-tool/properties/cf-mysql-backup/xtrabackup_path?
+  value: /var/vcap/packages/percona-xtrabackup/bin
+
+- type: replace
+  path: /instance_groups/name=backup-prepare/jobs/name=streaming-mysql-backup-client/properties/cf-mysql-backup?/xtrabackup_path?
+  value: /var/vcap/packages/xtrabackup/bin
