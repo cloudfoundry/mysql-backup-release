@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"os/exec"
-	"strings"
 	"time"
 
 	"code.cloudfoundry.org/cflager"
@@ -16,12 +15,18 @@ import (
 )
 
 type Config struct {
-	Command     string      `yaml:"Command" validate:"nonzero"`
+	XtraBackup  XtraBackup  `yaml:"XtraBackup"`
 	Port        int         `yaml:"Port" validate:"nonzero"`
 	PidFile     string      `yaml:"PidFile" validate:"nonzero"`
 	Credentials Credentials `yaml:"Credentials" validate:"nonzero"`
 	TLS         TLSConfig   `yaml:"TLS"`
 	Logger      lager.Logger
+}
+
+type XtraBackup struct {
+	DefaultsFile string `yaml:"MySQLDefaultsFile"`
+	TmpDir       string `yaml:"TmpDir"`
+	StreamFormat string `yaml:"StreamFormat"`
 }
 
 type Credentials struct {
@@ -131,6 +136,5 @@ func NewConfig(osArgs []string) (*Config, error) {
 }
 
 func (c Config) Cmd() *exec.Cmd {
-	fields := strings.Fields(c.Command)
-	return exec.Command(fields[0], fields[1:]...)
+	return exec.Command("xtrabackup", "--defaults-file="+c.XtraBackup.DefaultsFile, "--backup", "--stream="+c.XtraBackup.StreamFormat, "--target-dir="+c.XtraBackup.TmpDir)
 }

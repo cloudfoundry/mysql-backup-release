@@ -15,16 +15,18 @@ import (
 var _ = Describe("Config", func() {
 
 	var (
-		clientCA        string
-		command         string
-		configuration   string
-		enableMutualTLS bool
-		err             error
-		osArgs          []string
-		rootConfig      *config.Config
-		serverCert      string
-		serverKey       string
-		tmpDir          string
+		clientCA               string
+		xtraBackupDefaultsFile string
+		xtraBackupTmpDir       string
+		xtraBackupStreamFormat string
+		configuration          string
+		enableMutualTLS        bool
+		err                    error
+		osArgs                 []string
+		rootConfig             *config.Config
+		serverCert             string
+		serverKey              string
+		tmpDir                 string
 	)
 
 	BeforeEach(func() {
@@ -45,11 +47,17 @@ var _ = Describe("Config", func() {
 		clientCA = string(clientCABytes)
 		serverCert = string(serverCertPEM)
 		serverKey = string(privateServerKey)
+
+		xtraBackupDefaultsFile = "/var/vcap/jobs/mysql/config/my.cnf"
+		xtraBackupTmpDir = "/var/vcap/data/streaming-mysql-backup-tool/tmp"
+		xtraBackupStreamFormat = "xbstream"
 	})
 
 	JustBeforeEach(func() {
 		configurationTemplate := `{
-				"Command": %q,
+                "DefaultsFile": %q,
+                "TmpDir": %q,
+                "StreamFormat": %q,
 				"Port": 8081,
 				"PidFile": fakePath,
 				"Credentials":{
@@ -66,7 +74,9 @@ var _ = Describe("Config", func() {
 
 		configuration = fmt.Sprintf(
 			configurationTemplate,
-			command,
+			xtraBackupDefaultsFile,
+			xtraBackupTmpDir,
+			xtraBackupStreamFormat,
 			serverCert,
 			serverKey,
 			clientCA,
@@ -87,10 +97,6 @@ var _ = Describe("Config", func() {
 	})
 
 	Describe("Cmd", func() {
-		BeforeEach(func() {
-			command = "echo -n hello"
-		})
-
 		JustBeforeEach(func() {
 			rootConfig, err = config.NewConfig(osArgs)
 			Expect(err).ToNot(HaveOccurred())
@@ -98,7 +104,7 @@ var _ = Describe("Config", func() {
 
 		It("parses the command option", func() {
 			cmd := rootConfig.Cmd()
-			Expect(cmd.Args).To(Equal([]string{"echo", "-n", "hello"}))
+			Expect(cmd.Args).To(Equal([]string{"xtrabackup", "--defaults-file=/var/vcap/jobs/mysql/config/my.cnf", "--backup", "--stream=xbstream", "--target-dir=/var/vcap/data/streaming-mysql-backup-tool/tmp"}))
 		})
 	})
 
