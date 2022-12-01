@@ -6,4 +6,4 @@ set -o errexit -o nounset
 
 export MYSQL_ENGINE
 
-ginkgo "$@"
+go run github.com/onsi/ginkgo/v2/ginkgo "$@"
