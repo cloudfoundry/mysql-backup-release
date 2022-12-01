@@ -22,43 +22,20 @@ install_build_dependencies() {
   ./configure --prefix="${BOSH_INSTALL_TARGET}" --libdir="${BOSH_INSTALL_TARGET}/lib/private" --disable-static
   make -j "$(nproc)" install-exec DESTDIR="${BOSH_INSTALL_TARGET}"
   cd -
-
-  tar -xf percona-xtrabackup-8.0/procps_*.tar.xz
-  cd procps-*/
-  local discard_dir
-  discard_dir=$(mktemp -d)
-  ./configure \
-    --disable-pidof \
-    --disable-kill \
-    --disable-static \
-    --disable-modern-top \
-    --disable-numa \
-    --without-ncurses \
-    --bindir=${discard_dir} \
-    --sbindir=${discard_dir} \
-    --libdir="${BOSH_INSTALL_TARGET}/lib/private" \
-    --prefix="${BOSH_INSTALL_TARGET}" \
-    --datarootdir=${discard_dir} \
-    --datadir=${discard_dir}
-  make -j "$(nproc)" install
-  cd -
 }
 
 unpack_source() {
-  tar -xf percona-xtrabackup-8.0/boost_*.tar.bz2
-  tar -xf percona-xtrabackup-8.0/percona-xtrabackup-*.tar.gz
+  tar -xf percona-xtrabackup-2.4/boost_*.tar.bz2
+  tar -xf percona-xtrabackup-2.4/percona-xtrabackup-*.tar.gz
 }
 
 build_and_install() {
-  cd percona-xtrabackup-8.0.*/
+  cd percona-xtrabackup-2.4.*/
   mkdir bld && cd bld
 
   local boost_dir
   boost_dir=$(readlink -f ../../boost_*/)
 
-  export LIBRARY_PATH="${BOSH_INSTALL_TARGET}/lib/private"
-  export CPLUS_INCLUDE_PATH="${BOSH_INSTALL_TARGET}/include"
-  export LDFLAGS="-Wl,-rpath,${BOSH_INSTALL_TARGET}/lib"
   # shellcheck disable=SC2016
   cmake .. \
     -DBUILD_CONFIG=xtrabackup_release \

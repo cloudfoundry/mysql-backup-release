@@ -8,6 +8,8 @@ templates:
     simple_collect.sh.erb: bin/simple_collect.sh
 
 packages:
+- percona-xtrabackup-2.4
+- percona-xtrabackup-8.0
 - streaming-mysql-backup-tool
 
 provides:
@@ -18,6 +20,8 @@ provides:
   - cf-mysql-backup.endpoint_credentials.password
 
 consumes:
+- name: mysql
+  type: mysql
 - name: mysql-backup-user-creds
   type: mysql-backup-user-creds
   optional: true
@@ -53,4 +57,4 @@ properties:
     description: 'private key'
   cf-mysql-backup.xtrabackup_path:
     description: 'The path to the bin folder containing the binary. For use with pxc-release, use `/var/vcap/packages/percona-xtrabackup/bin`. The default is for cf-mysql-release'
-    default: /var/vcap/packages/xtrabackup/bin
+    default: /var/vcap/packages/percona-xtrabackup-2.4/bin

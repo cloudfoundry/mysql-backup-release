@@ -1,8 +1,0 @@
----
-name: xtrabackup
-
-files:
-- xtrabackup/percona-xtrabackup-*.tar.gz
-- xtrabackup/boost_1_59_0.tar.gz
-- xtrabackup/libaio_*.orig.tar.gz
-- xtrabackup/libev-*.tar.gz

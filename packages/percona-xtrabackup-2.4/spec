@@ -1,0 +1,8 @@
+---
+name: percona-xtrabackup-2.4
+
+files:
+- common/libaio_*.tar.xz
+- common/libev-*.tar.gz
+- percona-xtrabackup-2.4/boost_1_59_0.tar.bz2
+- percona-xtrabackup-2.4/percona-xtrabackup-*.tar.gz

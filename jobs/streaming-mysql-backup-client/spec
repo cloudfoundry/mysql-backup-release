@@ -8,9 +8,9 @@ templates:
     pre-start.erb: bin/pre-start
 
 packages:
-    - xtrabackup
-    - streaming-mysql-backup-client
-    - percona-xtrabackup-8.0
+- percona-xtrabackup-2.4
+- percona-xtrabackup-8.0
+- streaming-mysql-backup-client
 
 consumes:
 - name: mysql

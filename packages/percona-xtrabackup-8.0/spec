@@ -4,8 +4,9 @@ name: percona-xtrabackup-8.0
 dependencies: []
 
 files:
-- boost_1_77_0.tar.bz2
+- common/libaio_*.tar.xz
+- common/libev-*.tar.gz
 - patches/xtrabackup/opensslv3_8.0.patch
-- percona-xtrabackup-8.0*.tar.gz
-- libev-*.tar.gz
-- libaio_*.tar.xz
+- percona-xtrabackup-8.0/boost_1_77_0.tar.bz2
+- percona-xtrabackup-8.0/percona-xtrabackup-8.0*.tar.gz
+- percona-xtrabackup-8.0/procps_*.tar.xz
