@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/switchboard/api/middleware"
 
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/api"
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/collector"
 	c "github.com/cloudfoundry/streaming-mysql-backup-tool/config"
 
 	"code.cloudfoundry.org/lager"
@@ -38,9 +37,8 @@ func main() {
 	}
 
 	backupHandler := &api.BackupHandler{
-		CommandGenerator:   config.Cmd,
-		Logger:             logger,
-		CollectorGenerator: func() api.Collector { return collector.NewCollector(collector.NewScriptExecutor(), logger) },
+		CommandGenerator: config.Cmd,
+		Logger:           logger,
 	}
 
 	mux.Handle("/backup", backupHandler)

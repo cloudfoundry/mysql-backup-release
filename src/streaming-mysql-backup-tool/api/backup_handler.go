@@ -6,21 +6,15 @@ import (
 	"os/exec"
 
 	"code.cloudfoundry.org/lager"
+
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/commandexecutor"
 )
 
 var TrailerKey = http.CanonicalHeaderKey("X-Backup-Error")
 
 type BackupHandler struct {
-	CommandGenerator   func() *exec.Cmd
-	CollectorGenerator func() Collector
-	Logger             lager.Logger
-}
-
-//go:generate counterfeiter . Collector
-type Collector interface {
-	Start()
-	Stop()
+	CommandGenerator func() *exec.Cmd
+	Logger           lager.Logger
 }
 
 func (b *BackupHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -31,10 +25,6 @@ func (b *BackupHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		"method": request.Method,
 		"body":   request.Body,
 	})
-
-	collector := b.CollectorGenerator()
-	go collector.Start()
-	defer collector.Stop()
 
 	// NOTE: We set this in the Header because of the HTTP spec
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.40
