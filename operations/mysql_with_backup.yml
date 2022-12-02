@@ -38,8 +38,8 @@ instance_groups:
       properties:
         cf-mysql-backup:
           endpoint_credentials:
-            username: ((cf_mysql_backup_endpoint_credentials_username))
-            password: ((cf_mysql_backup_endpoint_credentials_password))
+            username: ((cf_mysql_backup_endpoint_credentials.username))
+            password: ((cf_mysql_backup_endpoint_credentials.password))
           symmetric_key: ((cf_mysql_backup_symmetric_key))
           tls:
             ca_certificate: ((cf_mysql_backup_cert.ca))

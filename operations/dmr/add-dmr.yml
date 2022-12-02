@@ -1,18 +1,89 @@
 ---
+# MySQL 5.7 has a 60-character limit
+# Standard "non-short" BOSH DNS addresses will exceed this limit and configure replication with a hostname exceeding
+# this limit, which will be truncated and not resolve.
+# Enable short bosh dns addresses to work around this limitation
+- type: replace
+  path: /features?/use_short_dns_addresses?
+  value: true
+
+- type: replace
+  path: /instance_groups/name=mysql/instances
+  value: 2
+
 - type: replace
   path: /instance_groups/name=mysql/jobs/name=mysql?
   value:
     name:    mysql
     release: dedicated-mysql
     properties:
+      leader_follower:
+        enabled: true
       admin_password:                ((mysql_admin_password))
       # agent and backups password are currently required in dedicated-mysql-release
-      agent_password:                ((placeholder_password))
+      agent_password:                ((agent_password))
       broker_admin_password:         ((broker_admin_password))
       default_schema:                default_schema
       enable_lower_case_table_names: false
       mysql_backup_password:         ((mysql_backup_password))
       mysql_backup_username:          mysql-backup
+      replication_password: ((replication_password))
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=mysql-agent?
+  value:
+    name: mysql-agent
+    release: dedicated-mysql
+    properties:
+      leader_follower:
+        enabled: true
+      agent_password: ((agent_password))
+      binding_hostname: dedicated-mysql.mysql.service.internal
+      trusted_certificates: ((agent_ca.certificate))
+      replication_password: ((replication_password))
+      cf-mysql-backup:
+        backup_local_node_only: true
+        backup-server:
+          port: 8081
+        symmetric_key: ((cf_mysql_backup_symmetric_key))
+        tls:
+          server_certificate: ((cf_mysql_backup_cert.certificate))
+          server_key: ((cf_mysql_backup_cert.private_key))
+          ca_certificate: ((cf_mysql_backup_cert.ca))
+          server_name: "streaming_mysql_backup_tool"
+        endpoint_credentials:
+          username: ((cf_mysql_backup_endpoint_credentials_username))
+          password: ((cf_mysql_backup_endpoint_credentials_password))
+      agent:
+        ssl:
+          common_name: "agent.dedicated-mysql.com"
+          client: ((agent_client_ssl))
+          server: ((agent_server_ssl))
+          remote_follower_client_common_name: "agent.dedicated-mysql.com"
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=configure-leader-follower?
+  value:
+    name: configure-leader-follower
+    release: dedicated-mysql
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=make-leader?
+  value:
+    name: make-leader
+    release: dedicated-mysql
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=make-read-only?
+  value:
+    name: make-read-only
+    release: dedicated-mysql
+
+- type: replace
+  path: /instance_groups/name=mysql/jobs/name=inspect?
+  value:
+    name: inspect
+    release: dedicated-mysql
 
 - type: replace
   path: /instance_groups/name=mysql/jobs/name=streaming-mysql-backup-client?
@@ -23,37 +94,64 @@
       cf-mysql-backup:
         backup_local_node_only: true
         endpoint_credentials:
-          username: ((cf_mysql_backup_endpoint_credentials_username))
-          password: ((cf_mysql_backup_endpoint_credentials_password))
+          username: ((cf_mysql_backup_endpoint_credentials.username))
+          password: ((cf_mysql_backup_endpoint_credentials.password))
         symmetric_key: ((cf_mysql_backup_symmetric_key))
         tls:
           ca_certificate: ((cf_mysql_backup_cert.ca))
           server_name: streaming_mysql_backup_tool
 
 - type: replace
-  path: /variables/name=placeholder_password?
-  value: {name: placeholder_password, type: password}
+  path: /variables/name=replication_password?
+  value: {name: replication_password, type: password}
 
 - type: replace
   path: /variables/name=mysql_admin_password?
-  value:
-    name: mysql_admin_password
-    type: password
+  value: {name: mysql_admin_password, type: password}
 
 - type: replace
-  path: /variables/name=cf_mysql_backup_endpoint_credentials_username?
-  value:
-    name: cf_mysql_backup_endpoint_credentials_username
-    type: password
-
-- type: replace
-  path: /variables/name=cf_mysql_backup_endpoint_credentials_password?
-  value:
-    name: cf_mysql_backup_endpoint_credentials_password
-    type: password
+  path: /variables/name=cf_mysql_backup_endpoint_credentials?
+  value: {name: cf_mysql_backup_endpoint_credentials, type: user}
 
 - type: replace
   path: /variables/name=cf_mysql_backup_symmetric_key?
+  value: {name: cf_mysql_backup_symmetric_key, type: password}
+
+- type: replace
+  path: /variables/name=agent_password?
+  value: {name: agent_password, type: password}
+
+- type: replace
+  path: /variables/name=agent_ca?
   value:
-    name: cf_mysql_backup_symmetric_key
-    type: password
+    name: agent_ca
+    type: certificate
+    update_mode: "converge"
+    options:
+      is_ca: true
+      common_name: "agent-ca"
+      alternative_names: ["agent-ca"]
+
+- type: replace
+  path: /variables/name=agent_client_ssl?
+  value:
+    name: agent_client_ssl
+    type: certificate
+    update_mode: "converge"
+    options:
+      ca: agent_ca
+      common_name: "agent.dedicated-mysql.com"
+      alternative_names: ["agent.dedicated-mysql.com"]
+      extended_key_usage: [ "client_auth" ]
+
+- type: replace
+  path: /variables/name=agent_server_ssl?
+  value:
+    name: agent_server_ssl
+    type: certificate
+    update_mode: "converge"
+    options:
+      ca: agent_ca
+      common_name: "agent.dedicated-mysql.com"
+      alternative_names: ["agent.dedicated-mysql.com"]
+      extended_key_usage: [ "server_auth" ]

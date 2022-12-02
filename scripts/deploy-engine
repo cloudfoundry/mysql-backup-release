@@ -18,6 +18,7 @@ pxc)
     --ops-file=operations/backup-from-inactive-node.yml
     --ops-file=operations/pxc/enable-remote-admin-access.yml
     --ops-file=operations/pxc/galera-agent-tls.yml
+    --ops-file=operations/use-mtls.yml
   )
   ;;
 pxc-8.0)
@@ -29,6 +30,7 @@ pxc-8.0)
     --ops-file=operations/backup-from-inactive-node.yml
     --ops-file=operations/pxc/enable-remote-admin-access.yml
     --ops-file=operations/pxc/galera-agent-tls.yml
+    --ops-file=operations/use-mtls.yml
   )
   ;;
 dedicated-mysql)
@@ -51,6 +53,5 @@ bosh deploy --no-redact --non-interactive \
   --var=engine_version="${MYSQL_ENGINE_VERSION}" \
   --ops-file=operations/stemcell.yml \
   --var=stemcell_os="${STEMCELL}" \
-  --ops-file=operations/use-mtls.yml \
   "${engine_deploy_args[@]}" \
   "$@"

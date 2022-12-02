@@ -5,12 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"e2e-tests/utilities/bosh"
-	"e2e-tests/utilities/cmd"
-	"e2e-tests/utilities/credhub"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"e2e-tests/utilities/bosh"
+	"e2e-tests/utilities/cmd"
+	"e2e-tests/utilities/credhub"
 )
 
 var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore"), func() {
@@ -18,6 +19,7 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 	var (
 		deploymentName string
 		backupTmpDir   string
+		firstInstance  string
 	)
 
 	BeforeAll(func() {
@@ -31,9 +33,11 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 			"./scripts/deploy-engine",
 		)).To(Succeed())
 
-		instanceAddresses, err := bosh.InstanceIPs(deploymentName, bosh.MatchByInstanceGroup("mysql"))
+		instances, err := bosh.Instances(deploymentName, bosh.MatchByInstanceGroup("mysql"))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(instanceAddresses).NotTo(BeEmpty(), `Expected a set of IP addresses to be computed for the deployment, but it was missing`)
+		Expect(instances).NotTo(BeEmpty())
+
+		firstInstance = instances[len(instances)-1].Instance
 	})
 
 	AfterAll(func() {
@@ -49,7 +53,7 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 		BeforeEach(func() {
 			var err error
 			By("Creating a /tmp/mysql-backups directory on the local machine")
-			backupTmpDir, err = os.MkdirTemp("","mysql-backups")
+			backupTmpDir, err = os.MkdirTemp("", "mysql-backups")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -63,17 +67,17 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 			By("Writing some test data")
 			_, err = bosh.RemoteCommand(deploymentName,
-				"mysql/0",
+				firstInstance,
 				fmt.Sprintf("sudo mysql --defaults-file=%s -e 'create database if not exists test;'", myLoginCnfFilePath))
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = bosh.RemoteCommand(deploymentName,
-				"mysql/0",
+				firstInstance,
 				fmt.Sprintf("sudo mysql --defaults-file=%s -e 'create table if not exists test.foo (id int primary key);'", myLoginCnfFilePath))
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = bosh.RemoteCommand(deploymentName,
-				"mysql/0",
+				firstInstance,
 				fmt.Sprintf("sudo mysql --defaults-file=%s -e 'insert into test.foo values (42);'", myLoginCnfFilePath))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -96,48 +100,44 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 				fmt.Sprintf("backup-prepare:%s", backupDir+backupArtifactName),
 				filepath.Join(backupTmpDir, backupArtifactName), "-r", "-l", "root")).To(Succeed())
 
-			By("Copying the backup artifact back to mysql/0")
+			By("Copying the backup artifact")
 			Expect(
 				bosh.Scp(deploymentName,
 					filepath.Join(backupTmpDir, backupArtifactName),
-					"mysql/0:/tmp/", "-l", "root "),
+					firstInstance+":/tmp/", "-l", "root "),
 			).Should(Succeed())
 
 			By("Stopping MySQL")
-			Expect(bosh.Stop(deploymentName, "mysql/0", "-n")).To(Succeed())
+			Expect(bosh.Stop(deploymentName, firstInstance, "-n")).To(Succeed())
 
 			By("Decrypting the backup artifact")
-			//gpgCmd := []string{"gpg", "--batch", "--yes", "--no-tty",
-			//	"--compress-algo", "zip", "--cipher-algo", "AES256",
-			//	"--output", "/tmp/mysql-backup.tar", "--passphrase",
-			//	symmetricKey, "--decrypt", "/tmp/"+backupArtifactName}
-			_, err = bosh.RemoteCommand(deploymentName, "mysql/0",
-				"gpg --batch --yes --no-tty --compress-algo zip --cipher-algo AES256 --output " +
-				"/tmp/mysql-backup.tar --passphrase " + symmetricKey +
-				" --decrypt /tmp/"+backupArtifactName,
+			_, err = bosh.RemoteCommand(deploymentName, firstInstance,
+				"gpg --batch --yes --no-tty --compress-algo zip --cipher-algo AES256 --output "+
+					"/tmp/mysql-backup.tar --passphrase "+symmetricKey+
+					" --decrypt /tmp/"+backupArtifactName,
 			)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Deleting the MySQL datadir")
-			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo rm -rf %s/*", mysqlDatdir))
+			_, err = bosh.RemoteCommand(deploymentName, firstInstance, fmt.Sprintf("sudo rm -rf %s/*", mysqlDatdir))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Restoring MySQL from the backup")
-			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo tar -xvf /tmp/mysql-backup.tar -C %s/", mysqlDatdir))
+			_, err = bosh.RemoteCommand(deploymentName, firstInstance, fmt.Sprintf("sudo tar -xvf /tmp/mysql-backup.tar -C %s/", mysqlDatdir))
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", "sudo rm /tmp/mysql-backup.tar")
+			_, err = bosh.RemoteCommand(deploymentName, firstInstance, "sudo rm /tmp/mysql-backup.tar")
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = bosh.RemoteCommand(deploymentName, "mysql/0", fmt.Sprintf("sudo chown -R vcap:vcap %s", mysqlDatdir))
+			_, err = bosh.RemoteCommand(deploymentName, firstInstance, fmt.Sprintf("sudo chown -R vcap:vcap %s", mysqlDatdir))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Starting MySQL")
-			Expect(bosh.Start(deploymentName, "mysql/0", "-n")).To(Succeed())
+			Expect(bosh.Start(deploymentName, firstInstance, "-n")).To(Succeed())
 
 			By("Verifying the restored data")
 			out, err := bosh.RemoteCommand(deploymentName,
-				"mysql/0",
+				firstInstance,
 				fmt.Sprintf("sudo mysql --defaults-file=%s -sse 'SELECT * from test.foo;'", myLoginCnfFilePath))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(out).To(Equal("42"))
