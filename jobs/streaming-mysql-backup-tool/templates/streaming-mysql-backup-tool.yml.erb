@@ -17,7 +17,7 @@
 
   config = {
     "PidFile" => "/var/vcap/sys/run/streaming-mysql-backup-tool/streaming-mysql-backup-tool.pid",
-    "Port" => p('cf-mysql-backup.backup-server.port'),
+    "BindAddress" => ":#{p('cf-mysql-backup.backup-server.port')}",
     "Credentials" => credentials,
     "XtraBackup" => {
       "DefaultsFile" => defaults_file,

@@ -14,7 +14,7 @@ import (
 )
 
 type Config struct {
-	Port        int         `yaml:"Port" validate:"nonzero"`
+	BindAddress string      `yaml:"BindAddress" validate:"nonzero"`
 	PidFile     string      `yaml:"PidFile" validate:"nonzero"`
 	Credentials Credentials `yaml:"Credentials" validate:"nonzero"`
 	TLS         TLSConfig   `yaml:"TLS"`
@@ -114,7 +114,7 @@ func NewConfig(osArgs []string) (*Config, error) {
 	cflager.AddFlags(flags)
 
 	serviceConfig.AddDefaults(Config{
-		Port: 8081,
+		BindAddress: "localhost:8081",
 	})
 
 	serviceConfig.AddFlags(flags)

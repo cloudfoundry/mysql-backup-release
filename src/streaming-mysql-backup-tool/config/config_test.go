@@ -48,7 +48,7 @@ var _ = Describe("Config", func() {
 
 	JustBeforeEach(func() {
 		configurationTemplate := `{
-				"Port": 8081,
+				"BindAddress": ":1234",
 				"PidFile": fakePath,
 				"Credentials":{
 					"Username": "fake_username",
@@ -93,6 +93,13 @@ var _ = Describe("Config", func() {
 
 		Expect(rootConfig.XtraBackup.DefaultsFile).To(Equal("/etc/my.cnf"))
 		Expect(rootConfig.XtraBackup.TmpDir).To(Equal("/tmp"))
+	})
+
+	It("can load a BindAddress option", func() {
+		rootConfig, err = config.NewConfig(osArgs)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(rootConfig.BindAddress).To(Equal(":1234"))
 	})
 
 	Context("When TLS Server credentials are misconfigured", func() {

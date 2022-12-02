@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -56,11 +55,11 @@ func main() {
 	_ = ioutil.WriteFile(pidfile.Name(), []byte(strconv.Itoa(os.Getpid())), 0644)
 
 	logger.Info("Starting server with configuration", lager.Data{
-		"port": config.Port,
+		"address": config.BindAddress,
 	})
 
 	httpServer := &http.Server{
-		Addr:      fmt.Sprintf(":%d", config.Port),
+		Addr:      config.BindAddress,
 		Handler:   wrappedMux,
 		TLSConfig: config.TLS.Config,
 	}
