@@ -339,7 +339,10 @@ var _ = Describe("Main", func() {
 				Eventually(func() error {
 					_, err := httpClient.Get(backupUrl)
 					return err
-				}).Should(MatchError(ContainSubstring("x509: certificate signed by unknown authority")))
+				}).Should(SatisfyAny(
+					MatchError(ContainSubstring("certificate is using a broken key size")),
+					MatchError(ContainSubstring("x509: certificate signed by unknown authority")),
+				))
 			})
 		})
 	})
@@ -688,7 +691,10 @@ var _ = Describe("Main", func() {
 					Eventually(func() error {
 						_, err := httpClient.Get(backupUrl)
 						return err
-					}).Should(MatchError(ContainSubstring("x509: certificate signed by unknown authority")))
+					}).Should(SatisfyAny(
+						MatchError(ContainSubstring("certificate is using a broken key size")),
+						MatchError(ContainSubstring("x509: certificate signed by unknown authority")),
+					))
 				})
 			})
 		})

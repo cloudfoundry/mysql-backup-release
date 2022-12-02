@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -24,6 +25,7 @@ func TestStreamingBackup(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	SetDefaultEventuallyTimeout(10 * time.Second)
 	var err error
 	pathToMainBinary, err = gexec.Build("github.com/cloudfoundry/streaming-mysql-backup-tool")
 	Expect(err).ShouldNot(HaveOccurred())
