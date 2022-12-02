@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -17,6 +18,8 @@ import (
 var (
 	pathToMainBinary string
 	configPath       string
+	sessionID        string
+	volumeName       string
 )
 
 func TestStreamingBackup(t *testing.T) {
@@ -26,22 +29,37 @@ func TestStreamingBackup(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	SetDefaultEventuallyTimeout(10 * time.Second)
-	var err error
+
+	sessionID = uuid.New().String()
+
+	volumeName = "xtrabackup-integration-test-data." + sessionID
+	scriptsDir, err := filepath.Abs("bin")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(os.Setenv("PATH", scriptsDir+":"+os.Getenv("PATH"))).To(Succeed())
+	Expect(os.Setenv("MYSQL_VOLUME", volumeName)).To(Succeed())
+
 	pathToMainBinary, err = gexec.Build("github.com/cloudfoundry/streaming-mysql-backup-tool")
 	Expect(err).ShouldNot(HaveOccurred())
 
 	configPath = createTmpFile("config").Name()
+
+	Expect(docker("pull", "--quiet", "percona/percona-server:8.0")).To(Succeed())
+	Expect(docker("pull", "--quiet", "percona/percona-xtrabackup:8.0")).To(Succeed())
 })
+
+func docker(args ...string) error {
+	cmd := exec.Command("docker", args...)
+	cmd.Stdout = GinkgoWriter
+	cmd.Stderr = GinkgoWriter
+	return cmd.Run()
+}
 
 func tmpFilePath(filePrefix string) string {
 	tempDir, err := ioutil.TempDir(os.TempDir(), "streaming-mysql-backup-tool")
 	Expect(err).NotTo(HaveOccurred())
 
-	guid, err := uuid.NewV4()
-	Expect(err).NotTo(HaveOccurred())
-
 	//tmpFilePath is in /tmpdir/prefix_guid format
-	filename := fmt.Sprintf("%s_%s", filePrefix, guid)
+	filename := fmt.Sprintf("%s_%s", filePrefix, uuid.New().String())
 	tmpFilePath := filepath.Join(tempDir, filename)
 
 	return tmpFilePath
