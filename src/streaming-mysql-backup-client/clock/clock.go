@@ -2,7 +2,9 @@ package clock
 
 import "time"
 
-//go:generate counterfeiter -o fakes/fake_clock.go . Clock
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+
+//counterfeiter:generate . Clock
 type Clock interface {
 	After(time.Duration) <-chan time.Time
 }

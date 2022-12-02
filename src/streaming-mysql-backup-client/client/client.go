@@ -21,6 +21,8 @@ import (
 	"github.com/cloudfoundry/streaming-mysql-backup-client/xbstream"
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+
 type MultiError []error
 
 func (e MultiError) Error() string {
@@ -37,17 +39,17 @@ func (e MultiError) Error() string {
 	return buf.String()
 }
 
-//go:generate counterfeiter . Downloader
+//counterfeiter:generate . Downloader
 type Downloader interface {
 	DownloadBackup(url string, streamer download.StreamedWriter) error
 }
 
-//go:generate counterfeiter . BackupPreparer
+//counterfeiter:generate . BackupPreparer
 type BackupPreparer interface {
 	Command(string) *exec.Cmd
 }
 
-//go:generate counterfeiter . GaleraAgentCallerInterface
+//counterfeiter:generate . GaleraAgentCallerInterface
 type GaleraAgentCallerInterface interface {
 	WsrepLocalIndex(string) (int, error)
 }
