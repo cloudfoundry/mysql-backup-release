@@ -168,7 +168,7 @@ func (c *Client) BackupNode(instance config.Instance) error {
 	if err != nil {
 		return err
 	}
-	err = c.downloadAndUntarBackup(instance.Address)
+	err = c.downloadAndUnpackBackup(instance.Address)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (c *Client) createDirectories() error {
 	return nil
 }
 
-func (c *Client) downloadAndUntarBackup(ip string) error {
+func (c *Client) downloadAndUnpackBackup(ip string) error {
 	c.logger.Info("Starting download of backup", lager.Data{
 		"backup-prepare-path": c.prepareDirectory,
 	})
