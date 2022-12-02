@@ -4,8 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"os/exec"
-	"strings"
 	"time"
 
 	"code.cloudfoundry.org/cflager"
@@ -16,12 +14,17 @@ import (
 )
 
 type Config struct {
-	Command     string      `yaml:"Command" validate:"nonzero"`
 	Port        int         `yaml:"Port" validate:"nonzero"`
 	PidFile     string      `yaml:"PidFile" validate:"nonzero"`
 	Credentials Credentials `yaml:"Credentials" validate:"nonzero"`
 	TLS         TLSConfig   `yaml:"TLS"`
 	Logger      lager.Logger
+	XtraBackup  XtraBackup `yaml:"XtraBackup"`
+}
+
+type XtraBackup struct {
+	DefaultsFile string `yaml:"DefaultsFile"`
+	TmpDir       string `yaml:"TmpDir"`
 }
 
 type Credentials struct {
@@ -128,9 +131,4 @@ func NewConfig(osArgs []string) (*Config, error) {
 	}
 
 	return &rootConfig, nil
-}
-
-func (c Config) Cmd() *exec.Cmd {
-	fields := strings.Fields(c.Command)
-	return exec.Command(fields[0], fields[1:]...)
 }

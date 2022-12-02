@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+: "${MYSQL_VOLUME:?}"
+: "${XTRABACKUP_VERSION:=8.0}"
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+echo >&2 "xtrabackup $*"
+docker run \
+  --rm \
+  --volume="${script_dir}/my.cnf:/etc/my.cnf" \
+  --volume="${MYSQL_VOLUME}:/var/lib/mysql" \
+  "percona/percona-xtrabackup:${XTRABACKUP_VERSION}" \
+  xtrabackup "$@" --no-version-check

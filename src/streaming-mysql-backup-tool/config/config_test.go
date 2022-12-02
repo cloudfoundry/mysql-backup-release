@@ -16,7 +16,6 @@ var _ = Describe("Config", func() {
 
 	var (
 		clientCA        string
-		command         string
 		configuration   string
 		enableMutualTLS bool
 		err             error
@@ -49,12 +48,15 @@ var _ = Describe("Config", func() {
 
 	JustBeforeEach(func() {
 		configurationTemplate := `{
-				"Command": %q,
 				"Port": 8081,
 				"PidFile": fakePath,
 				"Credentials":{
 					"Username": "fake_username",
 					"Password": "fake_password",
+				},
+				"XtraBackup": {
+				  "DefaultsFile": "/etc/my.cnf",
+				  "TmpDir": "/tmp",
 				},
 				"TLS":{
 					"ServerCert": %q,
@@ -66,7 +68,6 @@ var _ = Describe("Config", func() {
 
 		configuration = fmt.Sprintf(
 			configurationTemplate,
-			command,
 			serverCert,
 			serverKey,
 			clientCA,
@@ -86,20 +87,12 @@ var _ = Describe("Config", func() {
 		}
 	})
 
-	Describe("Cmd", func() {
-		BeforeEach(func() {
-			command = "echo -n hello"
-		})
+	It("can load XtraBackup config options", func() {
+		rootConfig, err = config.NewConfig(osArgs)
+		Expect(err).NotTo(HaveOccurred())
 
-		JustBeforeEach(func() {
-			rootConfig, err = config.NewConfig(osArgs)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("parses the command option", func() {
-			cmd := rootConfig.Cmd()
-			Expect(cmd.Args).To(Equal([]string{"echo", "-n", "hello"}))
-		})
+		Expect(rootConfig.XtraBackup.DefaultsFile).To(Equal("/etc/my.cnf"))
+		Expect(rootConfig.XtraBackup.TmpDir).To(Equal("/tmp"))
 	})
 
 	Context("When TLS Server credentials are misconfigured", func() {

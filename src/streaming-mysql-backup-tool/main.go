@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/api"
 	c "github.com/cloudfoundry/streaming-mysql-backup-tool/config"
+	"github.com/cloudfoundry/streaming-mysql-backup-tool/xtrabackup"
 
 	"code.cloudfoundry.org/lager"
 )
@@ -37,8 +38,12 @@ func main() {
 	}
 
 	backupHandler := &api.BackupHandler{
-		CommandGenerator: config.Cmd,
-		Logger:           logger,
+		BackupWriter: xtrabackup.Writer{
+			DefaultsFile: config.XtraBackup.DefaultsFile,
+			TmpDir:       config.XtraBackup.TmpDir,
+			Logger:       config.Logger,
+		},
+		Logger: logger,
 	}
 
 	mux.Handle("/backup", backupHandler)

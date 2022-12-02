@@ -1,44 +1,38 @@
 package api
 
 import (
-	"errors"
+	"io"
 	"net/http"
-	"os/exec"
 
 	"code.cloudfoundry.org/lager"
-
-	"github.com/cloudfoundry/streaming-mysql-backup-tool/commandexecutor"
 )
 
 var TrailerKey = http.CanonicalHeaderKey("X-Backup-Error")
 
 type BackupHandler struct {
-	CommandGenerator func() *exec.Cmd
-	Logger           lager.Logger
+	BackupWriter BackupWriter
+	Logger       lager.Logger
 }
 
-func (b *BackupHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	command := b.CommandGenerator()
+type BackupWriter interface {
+	StreamTo(format string, w io.Writer) error
+}
 
+func (b *BackupHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	b.Logger.Info("Responding to request", lager.Data{
-		"url":    request.URL,
-		"method": request.Method,
-		"body":   request.Body,
+		"url":    req.URL,
+		"method": req.Method,
+		"body":   req.Body,
 	})
 
 	// NOTE: We set this in the Header because of the HTTP spec
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.40
 	// Even though we cannot test it, because the `net/http.Get()` strips
 	// "Trailer" out of the Header
-	writer.Header().Set("Trailer", TrailerKey)
+	w.Header().Set("Trailer", TrailerKey)
+	w.Header().Set("Content-Type", "application/octet-stream; format=xbstream")
 
-	executor := commandexecutor.NewCommandExecutor(command, writer, b.LoggerWriter(), b.Logger)
-
-	b.Logger.Info("Executing command", lager.Data{
-		"command": command.Args[0],
-	})
-	err := executor.Run()
-
+	err := b.BackupWriter.StreamTo("xbstream", w)
 	errorString := ""
 	if err != nil {
 		errorString = err.Error()
@@ -48,27 +42,5 @@ func (b *BackupHandler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		})
 	}
 
-	writer.Header().Set(TrailerKey, errorString)
-}
-
-func (b *BackupHandler) LoggerWriter() *LoggerWriter {
-	return NewLoggerWriter(b.Logger)
-}
-
-//////////////////////////////////////////////////
-
-type LoggerWriter struct {
-	logger lager.Logger
-}
-
-func NewLoggerWriter(logger lager.Logger) *LoggerWriter {
-	return &LoggerWriter{logger: logger}
-}
-
-func (lw *LoggerWriter) Write(p []byte) (int, error) {
-	err := errors.New(string(p[:]))
-
-	lw.logger.Error("StdErr Pipe", err)
-
-	return len(p), nil
+	w.Header().Set(TrailerKey, errorString)
 }
