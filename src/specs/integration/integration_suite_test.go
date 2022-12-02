@@ -50,7 +50,7 @@ var _ = BeforeSuite(func() {
 	dockerClient, err = docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	Expect(dockertest.PullImage(dockerClient, DockerImage)).To(Succeed())
+	Expect(dockertest.PullImage(dockerClient, DockerImage+":latest")).To(Succeed())
 
 	dockerNetwork, err = dockertest.CreateNetwork(dockerClient, "mysql-net."+uuid.New().String())
 	Expect(err).NotTo(HaveOccurred())

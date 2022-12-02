@@ -18,6 +18,7 @@ import (
 	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/fileutils"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/tarpit"
+	"github.com/cloudfoundry/streaming-mysql-backup-client/xbstream"
 )
 
 type MultiError []error
@@ -222,8 +223,8 @@ func (c *Client) downloadAndUntarBackup(ip string) error {
 		"backup-prepare-path": c.prepareDirectory,
 	})
 
-	url := fmt.Sprintf("https://%s:%d/backup", ip, c.config.BackupServerPort)
-	err := c.downloader.DownloadBackup(url, tarpit.NewUntarStreamer(c.prepareDirectory))
+	url := fmt.Sprintf("https://%s:%d/backup?format=xbstream", ip, c.config.BackupServerPort)
+	err := c.downloader.DownloadBackup(url, xbstream.NewUnpacker(c.prepareDirectory))
 	if err != nil {
 		c.logger.Error("DownloadBackup failed", err)
 		return err

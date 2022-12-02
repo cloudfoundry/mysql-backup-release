@@ -66,8 +66,9 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 		fakeDownloader = &clientfakes.FakeDownloader{}
 
 		fakeDownloader.DownloadBackupStub = func(url string, streamedWriter download.StreamedWriter) error {
-			file, err := os.Open("fixtures/newtar.tar")
+			file, err := os.Open("fixtures/xbstream.xb")
 			Expect(err).ToNot(HaveOccurred())
+			defer file.Close()
 
 			return streamedWriter.WriteStream(file)
 		}
@@ -244,7 +245,7 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(matches).To(HaveLen(1))
 
-					Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node2:1234/backup"))
+					Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node2:1234/backup?format=xbstream"))
 				})
 			})
 
@@ -300,7 +301,7 @@ var _ = Describe("Streaming MySQL Backup Client", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(matches).To(HaveLen(1))
 
-				Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node3:1234/backup"))
+				Expect(fakeDownloader.Invocations()["DownloadBackup"][0][0]).To(Equal("https://node3:1234/backup?format=xbstream"))
 			})
 		})
 

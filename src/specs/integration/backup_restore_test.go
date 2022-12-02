@@ -297,7 +297,7 @@ var _ = Describe("BackupRestore", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(buf).To(gbytes.Say(`Get "?https://backup-server.%s:8081/backup"?: remote error: tls: bad certificate`, sessionID))
+				Expect(buf).To(gbytes.Say(`Get "?https://backup-server.%s:8081/backup\?format=xbstream"?: remote error: tls: bad certificate`, sessionID))
 			})
 		})
 	})
@@ -359,8 +359,11 @@ func createUntrustedClientCertificates(credentials *TestCredentials) {
 func backupServerConfig(credentials TestCredentials) string {
 	cfg := map[string]interface{}{
 		"PidFile": "/tmp/streaming-mysql-backup-tool.pid",
-		"Command": "xtrabackup --user=root --backup --stream=xbstream --target-dir=/tmp",
-		"Port":    8081,
+		"XtraBackup": map[string]string{
+			"DefaultsFile": "/etc/my.cnf",
+			"TmpDir":       "/tmp",
+		},
+		"BindAddress": ":8081",
 		"TLS": map[string]interface{}{
 			"ServerCert": string(credentials.ServerTLS.Cert),
 			"ServerKey":  string(credentials.ServerTLS.Key),
