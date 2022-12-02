@@ -24,8 +24,8 @@ var _ = Describe("BackupHandler", func() {
 	)
 
 	BeforeEach(func() {
+		testLogger = lagertest.NewTestLogger("collector-test")
 		fakeBackupWriter = &stubBackupWriter{}
-		testLogger = lagertest.NewTestLogger("handler-test")
 		backupHandler = &BackupHandler{
 			BackupWriter: fakeBackupWriter,
 			Logger:       testLogger,
@@ -33,61 +33,116 @@ var _ = Describe("BackupHandler", func() {
 		fakeResponseWriter = httptest.NewRecorder()
 	})
 
-	It("streams a backup via http", func() {
+	It("defines a canonical TrailerKey constant", func() {
+		Expect(TrailerKey).To(Equal(http.CanonicalHeaderKey(TrailerKey)))
+	})
+
+	It("uses a trailer key to surface backup errors", func() {
 		request, err = http.NewRequest("GET", "/backups", nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		fakeBackupWriter.content = "some-backup-content"
+		fakeBackupWriter.content = "some-data"
+		fakeBackupWriter.err = errors.New("some-error")
 
 		backupHandler.ServeHTTP(fakeResponseWriter, request)
-		result := fakeResponseWriter.Result()
 
-		body, _ := io.ReadAll(result.Body)
-		Expect(string(body)).To(Equal("some-backup-content"))
-
-		Expect(fakeBackupWriter.formatArg).
-			To(Equal("xbstream"),
-				`Expected the backup format to be "xbstream" but it was not.`)
+		res := fakeResponseWriter.Result()
+		Expect(res.Header).NotTo(HaveKey(TrailerKey))
+		Expect(res.Trailer).To(HaveKeyWithValue(TrailerKey, ContainElement("some-error")))
 	})
 
-	It("always sends an http 200 and stores errors in a Trailer Header", func() {
-		request, err = http.NewRequest("GET", "/backups", nil)
-		Expect(err).NotTo(HaveOccurred())
-
-		fakeBackupWriter.content = "some-backup-content-before-an-error"
-		fakeBackupWriter.err = errors.New("some-backup-error")
-
-		backupHandler.ServeHTTP(fakeResponseWriter, request)
-		result := fakeResponseWriter.Result()
-
-		Expect(result.StatusCode).To(Equal(http.StatusOK))
-
-		Expect(result.Header.Get("Content-Type")).To(Equal("application/octet-stream; format=xbstream"))
-
-		body, _ := io.ReadAll(result.Body)
-		Expect(string(body)).To(Equal("some-backup-content-before-an-error"))
-
-		Expect(result.Trailer.Get(TrailerKey)).To(Equal(`some-backup-error`))
-	})
-
-	When("the backup was successful", func() {
-		It("still emits a trailer key with an empty value indicating no error", func() {
+	When("the `format` parameter is NOT specified", func() {
+		It("sets the Content-Type header to tar by default", func() {
 			request, err = http.NewRequest("GET", "/backups", nil)
 			Expect(err).NotTo(HaveOccurred())
-
-			fakeBackupWriter.content = "some-backup-content"
-
 			backupHandler.ServeHTTP(fakeResponseWriter, request)
-			result := fakeResponseWriter.Result()
+			Expect(fakeResponseWriter.Result().Header.Get("Content-Type")).To(Equal(`application/octet-stream; format=tar`))
+		})
 
-			_, _ = io.ReadAll(result.Body)
+		It("indicates success by setting an empty Trailer", func() {
+			request, err = http.NewRequest("GET", "/backups", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+			response := fakeResponseWriter.Result()
+			Expect(response.StatusCode).To(Equal(http.StatusOK))
+			Expect(response.Header.Get(TrailerKey)).To(BeEmpty())
+		})
 
-			Expect(result.Trailer).To(HaveKeyWithValue(TrailerKey, ConsistOf("")))
+		It("delegates to the BackupWriter", func() {
+			request, err = http.NewRequest("GET", "/backups", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+			Expect(fakeBackupWriter.callCount).To(Equal(1))
+			Expect(fakeBackupWriter.formatArg).To(Equal("tar"))
 		})
 	})
 
-	It("defines a canonical TrailerKey constant", func() {
-		Expect(TrailerKey).To(Equal(http.CanonicalHeaderKey(TrailerKey)))
+	When("the `format` parameter is explicitly set to tar", func() {
+		It("sets the Content-Type Header to indicate the format", func() {
+			request, err = http.NewRequest("GET", "/backups?format=tar", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+
+			Expect(fakeResponseWriter.Result().Header.Get("Content-Type")).To(Equal(`application/octet-stream; format=tar`))
+		})
+
+		It("delegates to the BackupWriter", func() {
+			request, err = http.NewRequest("GET", "/backups?format=tar", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+			Expect(fakeBackupWriter.callCount).To(Equal(1))
+			Expect(fakeBackupWriter.formatArg).To(Equal("tar"))
+		})
+	})
+
+	When("the `format` parameter is set to xbstream", func() {
+		It("sets the Content-Type Header to indicate the format", func() {
+			request, err = http.NewRequest("GET", "/backups?format=xbstream", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+
+			Expect(fakeResponseWriter.Result().Header.Get("Content-Type")).To(Equal(`application/octet-stream; format=xbstream`))
+		})
+
+		It("delegates to the BackupWriter", func() {
+			request, err = http.NewRequest("GET", "/backups?format=xbstream", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+			Expect(fakeBackupWriter.callCount).To(Equal(1))
+			Expect(fakeBackupWriter.formatArg).To(Equal("xbstream"))
+		})
+	})
+
+	When("the `format` parameter is set to an invalid value", func() {
+		It("return a response indicating a bad requesst", func() {
+			request, err = http.NewRequest("GET", "/backups?format=foobar", nil)
+			Expect(err).NotTo(HaveOccurred())
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+
+			Expect(fakeResponseWriter.Result().StatusCode).To(Equal(http.StatusBadRequest))
+
+			response, _ := io.ReadAll(fakeResponseWriter.Result().Body)
+			Expect(string(response)).To(MatchJSON(`{"error": "invalid backup format 'foobar' requested"}`))
+		})
+	})
+
+	When("the backup fails halfway through", func() {
+		It("has HTTP 200 status code but writes the error to the trailer", func() {
+			request, err = http.NewRequest("GET", "/backups", nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeBackupWriter.err = errors.New("failed backup error")
+			fakeBackupWriter.content = "initial-content"
+
+			backupHandler.ServeHTTP(fakeResponseWriter, request)
+
+			result := fakeResponseWriter.Result()
+			Expect(result.StatusCode).To(Equal(http.StatusOK))
+			body, err := io.ReadAll(result.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(body)).To(Equal("initial-content"))
+			Expect(result.Trailer.Get(TrailerKey)).To(Equal("failed backup error"))
+		})
 	})
 })
 
