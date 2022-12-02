@@ -81,27 +81,27 @@ func NewClient(config config.Config, tarClient *tarpit.TarClient, backupPreparer
 	return client
 }
 
-func (c Client) artifactName(uuid string) string {
+func (c *Client) artifactName(uuid string) string {
 	return fmt.Sprintf("mysql-backup-%d-%s", c.version, uuid)
 }
 
-func (c Client) downloadedBackupLocation() string {
+func (c *Client) downloadedBackupLocation() string {
 	return path.Join(c.downloadDirectory, "unprepared-backup.tar")
 }
 
-func (c Client) preparedBackupLocation() string {
+func (c *Client) preparedBackupLocation() string {
 	return path.Join(c.encryptDirectory, "prepared-backup.tar")
 }
 
-func (c Client) encryptedBackupLocation(uuid string) string {
+func (c *Client) encryptedBackupLocation(uuid string) string {
 	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.tar.gpg", c.artifactName(uuid)))
 }
 
-func (c Client) originalMetadataLocation() string {
+func (c *Client) originalMetadataLocation() string {
 	return path.Join(c.prepareDirectory, "xtrabackup_info")
 }
 
-func (c Client) finalMetadataLocation(uuid string) string {
+func (c *Client) finalMetadataLocation(uuid string) string {
 	return path.Join(c.config.OutputDir, fmt.Sprintf("%s.txt", c.artifactName(uuid)))
 }
 
