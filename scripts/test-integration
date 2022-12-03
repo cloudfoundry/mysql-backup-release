@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -o errexit -o nounset
+
+release_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+
+cd "${release_dir}/src/specs/integration"
+ginkgo -v
+cd -
