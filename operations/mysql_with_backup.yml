@@ -48,6 +48,7 @@ instance_groups:
 releases:
   - name: mysql-backup
     version: latest
+    url: .
 
   - name: bpm
     version: latest

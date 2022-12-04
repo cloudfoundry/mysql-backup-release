@@ -2,6 +2,7 @@
 
 set -o errexit -o nounset -o xtrace
 
+: "${MYSQL_BACKUP_VERSION:=create}"
 : "${MYSQL_ENGINE:="pxc-8.0"}"
 : "${MYSQL_ENGINE_VERSION:=latest}"
 : "${DEPLOYMENT_NAME:=${MYSQL_ENGINE%-8.0}-backup}"
@@ -44,8 +45,9 @@ esac
 
 bosh deploy --no-redact --non-interactive \
   operations/mysql_with_backup.yml \
-  --ops-file=operations/create-dev-release.yml \
   --deployment="${DEPLOYMENT_NAME}" \
+  --ops-file=operations/mysql-backup-release-version.yml \
+  --var=mysql_backup_version="${MYSQL_BACKUP_VERSION}" \
   --ops-file=operations/deployment-name.yml \
   --var=deployment_name="${DEPLOYMENT_NAME}" \
   --ops-file=operations/engine-version.yml \
