@@ -1,32 +1,22 @@
-# abort script on any command that exits with a non zero value
-set -eu
+#!/usr/bin/env bash
 
-NPROC="$(nproc)"
+set -o errexit -o nounset
 
-## boost (percona-xtrabackup dependency)
-tar -xf xtrabackup/boost_1_59_0.tar.gz
+main() {
+  install_build_dependencies
+  unpack_distribution
+}
 
-## libaio
-tar -xf xtrabackup/libaio_*.orig.tar.gz
-make -j "${NPROC}" -C libaio-*/ install
+install_build_dependencies() {
+  tar -xf libev-*.tar.gz
+  cd libev-*/
+  ./configure --prefix="${BOSH_INSTALL_TARGET}" --libdir="${BOSH_INSTALL_TARGET}/lib/private" --disable-static
+  make -j $(nproc) install-exec DESTDIR="${BOSH_INSTALL_TARGET}"
+  cd -
+}
 
-## libev (percona-xtrabackup -> xbcloud dependency)
-tar -xf xtrabackup/libev-*.tar.gz
-pushd libev-*/
-  ./configure --prefix=/usr --disable-static
-  make -j "${NPROC}"
-  make -j "${NPROC}" install
-popd
+unpack_distribution() {
+  tar --strip-components=1 --directory="${BOSH_INSTALL_TARGET}" -xf percona-xtrabackup-2.4.*-Linux-x86_64.*.tar.gz
+}
 
-## percona-xtrabackup
-tar -xf xtrabackup/percona-xtrabackup-*.tar.gz
-pushd percona-xtrabackup-*/
-    cmake \
-        -DBUILD_CONFIG=xtrabackup_release \
-        -DCMAKE_INSTALL_PREFIX=${BOSH_INSTALL_TARGET} \
-        -DINSTALL_MYSQLTESTDIR= \
-        -DWITH_BOOST=../boost_1_59_0/ \
-        -DWITH_MAN_PAGES=OFF
-    make -j "${NPROC}"
-    make -j "${NPROC}" install
-popd
+main

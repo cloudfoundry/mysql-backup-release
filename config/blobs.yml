@@ -10,23 +10,11 @@ libev-4.33.tar.gz:
   size: 569527
   object_id: 49f23753-9f6e-44eb-5dc8-da49562a78f8
   sha: sha256:507eb7b8d1015fbec5b935f34ebed15bf346bed04a11ab82b8eee848c4205aea
+percona-xtrabackup-2.4.26-Linux-x86_64.glibc2.12-minimal.tar.gz:
+  size: 13190791
+  object_id: ca9dfaea-8665-45de-60b5-89ec0bb9cfa6
+  sha: sha256:4050348c3b2d50203a129196b32b9fdff1211bb1261ce3053a7a2a387bf94959
 percona-xtrabackup-8.0.30-23-Linux-x86_64.glibc2.17-minimal.tar.gz:
   size: 26546910
   object_id: a1d202c0-5d07-499a-4828-50f306ceca3c
   sha: sha256:6c3db7ae5a11bf67dd09587fbb60afb13e0032dd46418a93033b7e5d43f7fb37
-xtrabackup/boost_1_59_0.tar.gz:
-  size: 83709983
-  object_id: 20b5dbe0-2ec6-47c6-b4b0-64dd28034842
-  sha: 5123209db194d66d69a9cfa5af8ff473d5941d97
-xtrabackup/libaio_0.3.110.orig.tar.gz:
-  size: 42270
-  object_id: fa1fa8b6-6060-4346-82bd-214a39f338dc
-  sha: f8f6ed15f22e528f6f415939b07854539e3360e4
-xtrabackup/libev-4.22.tar.gz:
-  size: 530094
-  object_id: 1a0f25ed-4eda-44c9-a095-b88e9586d31c
-  sha: b5cc3f6d8d842e23fccc9b27d318ae7fa3d3bf60
-xtrabackup/percona-xtrabackup-2.4.26.tar.gz:
-  size: 62011032
-  object_id: 1a0dc92f-70d0-4dfb-473c-fe21d31be19d
-  sha: sha256:250ebafb5929a6ca50c6cbec41592f519bd161de3deea8b5e4f829063cb53844
