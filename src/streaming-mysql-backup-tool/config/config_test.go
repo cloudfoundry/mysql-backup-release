@@ -3,7 +3,6 @@ package config_test
 import (
 	"crypto/tls"
 	"fmt"
-	"os"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
 	. "github.com/onsi/ginkgo"
@@ -16,17 +15,15 @@ var _ = Describe("Config", func() {
 
 	var (
 		clientCA        string
-		configuration   string
 		enableMutualTLS bool
-		err             error
 		osArgs          []string
-		rootConfig      *config.Config
 		serverCert      string
 		serverKey       string
-		tmpDir          string
 	)
 
 	BeforeEach(func() {
+		enableMutualTLS = false
+
 		// Create certificates
 		clientAuthority, err := certtest.BuildCA("clientCA")
 		Expect(err).ToNot(HaveOccurred())
@@ -66,7 +63,7 @@ var _ = Describe("Config", func() {
 				},
 			}`
 
-		configuration = fmt.Sprintf(
+		configuration := fmt.Sprintf(
 			configurationTemplate,
 			serverCert,
 			serverKey,
@@ -80,15 +77,8 @@ var _ = Describe("Config", func() {
 		}
 	})
 
-	AfterEach(func() {
-		if tmpDir != "" {
-			err := os.RemoveAll(tmpDir)
-			Expect(err).NotTo(HaveOccurred())
-		}
-	})
-
 	It("can load XtraBackup config options", func() {
-		rootConfig, err = config.NewConfig(osArgs)
+		rootConfig, err := config.NewConfig(osArgs)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(rootConfig.XtraBackup.DefaultsFile).To(Equal("/etc/my.cnf"))
@@ -96,7 +86,7 @@ var _ = Describe("Config", func() {
 	})
 
 	It("can load a BindAddress option", func() {
-		rootConfig, err = config.NewConfig(osArgs)
+		rootConfig, err := config.NewConfig(osArgs)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(rootConfig.BindAddress).To(Equal(":1234"))
@@ -109,7 +99,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("Fails to start with error", func() {
-				rootConfig, err = config.NewConfig(osArgs)
+				_, err := config.NewConfig(osArgs)
 				Expect(err).To(MatchError(
 					ContainSubstring("failed to load server certificate or private key: tls: failed to find any PEM data in key input"),
 				))
@@ -122,7 +112,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("Fails to start with error", func() {
-				rootConfig, err = config.NewConfig(osArgs)
+				_, err := config.NewConfig(osArgs)
 				Expect(err).To(
 					MatchError(
 						ContainSubstring("failed to load server certificate or private key: tls: failed to find any PEM data in certificate input"),
@@ -138,7 +128,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("Starts without error", func() {
-				rootConfig, err = config.NewConfig(osArgs)
+				_, err := config.NewConfig(osArgs)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -146,7 +136,7 @@ var _ = Describe("Config", func() {
 
 	Context("When mTLS is disabled (default behavior)", func() {
 		It("Does not require or verify client certificates", func() {
-			rootConfig, err = config.NewConfig(osArgs)
+			rootConfig, err := config.NewConfig(osArgs)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(rootConfig.TLS.Config).ToNot(BeNil())
@@ -160,7 +150,7 @@ var _ = Describe("Config", func() {
 		})
 
 		It("Requires and verifies client certificates", func() {
-			rootConfig, err = config.NewConfig(osArgs)
+			rootConfig, err := config.NewConfig(osArgs)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(rootConfig.TLS.Config).ToNot(BeNil())
@@ -174,7 +164,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("Fails to start with error", func() {
-				rootConfig, err = config.NewConfig(osArgs)
+				_, err := config.NewConfig(osArgs)
 				Expect(err).To(
 					MatchError(
 						ContainSubstring("unable to load client CA certificate"),
