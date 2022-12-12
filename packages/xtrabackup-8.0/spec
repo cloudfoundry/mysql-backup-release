@@ -1,5 +1,5 @@
 ---
-name: percona-xtrabackup-8.0
+name: xtrabackup-8.0
 
 dependencies: []
 

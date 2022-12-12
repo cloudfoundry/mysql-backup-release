@@ -9,7 +9,7 @@ templates:
 
 packages:
     - xtrabackup
-    - percona-xtrabackup-8.0
+    - xtrabackup-8.0
     - streaming-mysql-backup-client
 
 consumes:

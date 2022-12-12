@@ -5,4 +5,4 @@
 
 - type: replace
   path: /instance_groups/name=backup-prepare/jobs/name=streaming-mysql-backup-client/properties/cf-mysql-backup?/xtrabackup_path?
-  value: /var/vcap/packages/percona-xtrabackup-8.0/bin
+  value: /var/vcap/packages/xtrabackup-8.0/bin
