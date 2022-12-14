@@ -33,6 +33,7 @@ var _ = Describe("ClientConfig", func() {
 		serverName = "myServerName"
 		someEncryptionKey = "myEncryptionKey"
 		enableMutualTLS = false
+		galeraAgentTLS = false
 
 		ca, err := certtest.BuildCA("serverCA")
 		Expect(err).ToNot(HaveOccurred())
@@ -143,6 +144,10 @@ var _ = Describe("ClientConfig", func() {
 	Context("when the encryption key is an environment variable", func() {
 		JustBeforeEach(func() {
 			os.Setenv("ENCRYPTION_KEY", "environmentEncryptionKey")
+		})
+
+		AfterEach(func() {
+			os.Unsetenv("ENCRYPTION_KEY")
 		})
 
 		It("Uses the encryption key in the environment instead of the config file", func() {
