@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/tlsconfig v0.0.0-20190419002020-eb9396db5a71
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
+	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v1.4.2-0.20190529163906-8d760280a232 // indirect
 	github.com/fsouza/go-dockerclient v1.4.1
 	github.com/go-sql-driver/mysql v1.4.1
