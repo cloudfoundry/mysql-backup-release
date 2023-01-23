@@ -1,5 +1,9 @@
 ---
 - type: replace
+  path: /releases/name=pxc?/version
+  value: ((mysql_release_version))
+
+- type: replace
   path: /variables/name=mysql_admin_password?
   value:
     name: mysql_admin_password

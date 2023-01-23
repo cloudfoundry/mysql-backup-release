@@ -3,15 +3,15 @@
 set -o errexit -o nounset -o xtrace
 
 : "${MYSQL_BACKUP_VERSION:=create}"
-: "${MYSQL_ENGINE:="pxc-8.0"}"
-: "${MYSQL_ENGINE_VERSION:=latest}"
-: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE%-8.0}-backup}"
+: "${MYSQL_ENGINE:="pxc-v1-80"}"
+: "${DEPLOYMENT_NAME:=${MYSQL_ENGINE}-backup}"
 : "${STEMCELL:=ubuntu-jammy}"
+: "${MYSQL_RELEASE_VERSION:=latest}"
 
 declare -a engine_deploy_args
 
 case "${MYSQL_ENGINE}" in
-pxc)
+pxc-v0-57)
   engine_deploy_args+=(
     --ops-file=operations/pxc/add-pxc.yml
     --ops-file=operations/pxc/use-clustered.yml
@@ -22,7 +22,7 @@ pxc)
     --ops-file=operations/use-mtls.yml
   )
   ;;
-pxc-8.0)
+pxc-v1-80)
   engine_deploy_args+=(
     --ops-file=operations/pxc/add-pxc.yml
     --ops-file=operations/pxc/use-pxc80.yml
@@ -34,8 +34,26 @@ pxc-8.0)
     --ops-file=operations/use-mtls.yml
   )
   ;;
-dedicated-mysql)
+pxc-v1-57)
+  engine_deploy_args+=(
+    --ops-file=operations/pxc/add-pxc.yml
+    --ops-file=operations/pxc/use-pxc-with-mysql57.yml
+    --ops-file=operations/pxc/use-clustered.yml
+    --ops-file=operations/pxc/seeded-users.yml
+    --ops-file=operations/backup-from-inactive-node.yml
+    --ops-file=operations/pxc/enable-remote-admin-access.yml
+    --ops-file=operations/pxc/galera-agent-tls.yml
+    --ops-file=operations/use-mtls.yml
+  )
+  ;;
+dedicated-mysql-57)
   engine_deploy_args+=(--ops-file=operations/dmr/add-dmr.yml)
+  ;;
+dedicated-mysql-80)
+  engine_deploy_args+=(
+    --ops-file=operations/dmr/add-dmr.yml
+    --ops-file=operations/dmr/use-mysql80.yml
+  )
   ;;
 *)
   echo >&2 "Unknown ENGINE=$MYSQL_ENGINE"
@@ -50,9 +68,7 @@ bosh deploy --no-redact --non-interactive \
   --var=mysql_backup_version="${MYSQL_BACKUP_VERSION}" \
   --ops-file=operations/deployment-name.yml \
   --var=deployment_name="${DEPLOYMENT_NAME}" \
-  --ops-file=operations/engine-version.yml \
-  --var=engine="${MYSQL_ENGINE%-8.0}" \
-  --var=engine_version="${MYSQL_ENGINE_VERSION}" \
+  --var=mysql_release_version="${MYSQL_RELEASE_VERSION}" \
   --ops-file=operations/stemcell.yml \
   --var=stemcell_os="${STEMCELL}" \
   "${engine_deploy_args[@]}" \

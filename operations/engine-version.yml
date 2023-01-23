@@ -1,4 +1,0 @@
----
-- type:  replace
-  path:  /releases/name=((engine))?/version
-  value: ((engine_version))
