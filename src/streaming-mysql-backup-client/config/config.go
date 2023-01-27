@@ -28,6 +28,7 @@ type Config struct {
 	Logger                 lager.Logger
 	MetadataFields         map[string]string
 	BackendTLS             BackendTLS `yaml:"BackendTLS"`
+	GetMetadata            bool       `yaml:"GetMetadata"`
 }
 
 func (c Config) HTTPClient() *http.Client {
@@ -132,6 +133,7 @@ func NewConfig(osArgs []string) (*Config, error) {
 	rootConfig.Logger.RegisterSink(lager.NewWriterSink(os.Stderr, lager.ERROR))
 
 	serviceConfig.AddFlags(flags)
+	flags.BoolVar(&rootConfig.GetMetadata, "get-metadata", false, "toggles whether to return metadata for the requested backup")
 	_ = flags.Parse(executableArgs)
 
 	err := serviceConfig.Read(&rootConfig)

@@ -108,6 +108,11 @@ func (c *Client) finalMetadataLocation(uuid string) string {
 }
 
 func (c *Client) Execute() error {
+	if c.config.GetMetadata {
+		fmt.Println(`{"mysqlVersion": "8.0"}`)
+		return nil
+	}
+
 	var allErrors MultiError
 	var instances []config.Instance
 
