@@ -1,0 +1,10 @@
+---
+name: get-metadata
+
+templates:
+  get-metadata.erb: bin/get-metadata
+
+packages:
+    - get-metadata
+
+properties: {}

@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eux
+
+source /var/vcap/packages/golang-1.19-linux/bosh/compile.env
+
+cd get-metadata
+go build -o "${BOSH_INSTALL_TARGET}"/bin/get-metadata
+cd -

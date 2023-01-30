@@ -1,0 +1,8 @@
+---
+name: get-metadata
+
+dependencies:
+- golang-1.19-linux
+
+files:
+- get-metadata/**
