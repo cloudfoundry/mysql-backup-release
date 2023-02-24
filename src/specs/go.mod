@@ -20,8 +20,7 @@ require (
 	github.com/pivotal/mysql-test-utils v0.0.0-20190814212959-5641fb366f99
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/square/certstrap v1.1.2-0.20190529172214-260b895e2ebf // indirect
-	golang.org/x/net v0.0.0-20190328230028-74de082e2cca // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	google.golang.org/appengine v1.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20190530194941-fb225487d101 // indirect
 	google.golang.org/grpc v1.21.0 // indirect
