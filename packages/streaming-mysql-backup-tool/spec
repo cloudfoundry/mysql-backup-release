@@ -2,7 +2,7 @@
 name: streaming-mysql-backup-tool
 
 dependencies:
-- golang-1.19-linux
+- golang-1.20-linux
 
 files:
 - streaming-mysql-backup-tool/**
