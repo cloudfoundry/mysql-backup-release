@@ -6,5 +6,5 @@ release_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 
 cd "${release_dir}/src/specs/integration"
-ginkgo -v
+go run github.com/onsi/ginkgo/v2/ginkgo -v
 cd -

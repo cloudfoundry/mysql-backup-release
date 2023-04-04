@@ -1,20 +1,15 @@
 #!/bin/bash
-set -ex
+set -o errexit -o nounset
 
-MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-PROJECT_DIR="$( cd $MY_DIR/.. && pwd )"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 pushd "${PROJECT_DIR}"
-  if [[ -z "$USE_FGT" ]]; then
-    go fmt $(go list ./... | grep -v /vendor/)
-  else
-    fgt go fmt $(go list ./... | grep -v /vendor/)
-  fi
-  go vet $(go list ./... | grep -v /vendor/)
+  echo "Running vet checks..."
+  go vet ./...
 
   echo "Verifying it builds..."
   ./bin/build
 
-  ginkgo -p -r -race -failOnPending -randomizeAllSpecs "$@"
+  echo "Running tests..."
+  go run github.com/onsi/ginkgo/v2/ginkgo -p -r --race --fail-on-pending --randomize-all "$@"
 popd

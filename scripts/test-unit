@@ -8,14 +8,6 @@ RELEASE_DIR="$( cd $MY_DIR/.. && pwd )"
 
 source ${RELEASE_DIR}/.envrc
 
-# Remove and reinstall the ginkgo binary as it might be from the wrong target architecture
-rm -rf ${RELEASE_DIR}/bin/ginkgo
-rm -rf ${RELEASE_DIR}/bin/fgt
-
-go install -mod=readonly github.com/onsi/ginkgo/ginkgo@latest
-go install -mod=readonly github.com/GeertJohan/fgt@latest
-go install -mod=readonly github.com/maxbrunsfeld/counterfeiter/v6@latest
-
 echo -e "\nTesting Streaming backup tool..."
 ${RELEASE_DIR}/src/streaming-mysql-backup-tool/bin/test "$@"
 

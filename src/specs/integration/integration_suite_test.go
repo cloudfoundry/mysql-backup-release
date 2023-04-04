@@ -1,22 +1,20 @@
 package integration_test
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pivotal/mysql-test-utils/dockertest"
-	"github.com/pivotal/mysql-test-utils/testhelpers"
+
+	"github.com/cloudfoundry/specs/docker"
 )
 
 func TestIntegration(t *testing.T) {
@@ -29,8 +27,7 @@ const (
 )
 
 var (
-	dockerClient                      *docker.Client
-	dockerNetwork                     *docker.Network
+	dockerNetwork                     string
 	streamingMySQLBackupToolBinPath   string
 	streamingMySQLBackupClientBinPath string
 	fixturesPath                      string
@@ -47,13 +44,10 @@ var _ = BeforeSuite(func() {
 	var err error
 	var cwd string
 
-	dockerClient, err = docker.NewClientFromEnv()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(docker.PullImage(DockerImage + ":latest")).Error().NotTo(HaveOccurred())
 
-	Expect(dockertest.PullImage(dockerClient, DockerImage+":latest")).To(Succeed())
-
-	dockerNetwork, err = dockertest.CreateNetwork(dockerClient, "mysql-net."+uuid.New().String())
-	Expect(err).NotTo(HaveOccurred())
+	dockerNetwork = "mysql-net." + uuid.New().String()
+	Expect(docker.CreateNetwork(dockerNetwork)).To(Succeed())
 
 	// Default tmpdir on OS X cannot be mapped into a docker container, so use /tmp instead
 	Expect(os.Setenv("TMPDIR", "/tmp")).To(Succeed())
@@ -89,13 +83,5 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	if dockerNetwork != nil {
-		Expect(dockertest.RemoveNetwork(dockerClient, dockerNetwork)).To(Succeed())
-	}
-})
-
-var _ = JustAfterEach(func() {
-	if CurrentGinkgoTestDescription().Failed {
-		fmt.Fprint(GinkgoWriter, testhelpers.TestFailureMessage)
-	}
+	Expect(docker.RemoveNetwork(dockerNetwork)).To(Succeed())
 })

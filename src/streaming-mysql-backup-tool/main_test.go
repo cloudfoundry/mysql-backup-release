@@ -14,7 +14,7 @@ import (
 	"code.cloudfoundry.org/tlsconfig"
 	"code.cloudfoundry.org/tlsconfig/certtest"
 	_ "github.com/go-sql-driver/mysql"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -72,7 +72,7 @@ var _ = Describe("streaming-mysql-backup-tool", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		pidFile = tmpFilePath("pid")
-		backupServerPort = 49000 + GinkgoParallelNode()
+		backupServerPort = 49000 + GinkgoParallelProcess()
 		enableMutualTLS = false
 		requiredClientIdentities = nil
 	})
@@ -113,7 +113,7 @@ var _ = Describe("streaming-mysql-backup-tool", func() {
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			return
 		}
 

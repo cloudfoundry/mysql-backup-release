@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/cloudfoundry/streaming-mysql-backup-tool/config"

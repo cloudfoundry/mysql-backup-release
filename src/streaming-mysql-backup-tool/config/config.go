@@ -6,8 +6,8 @@ import (
 	"flag"
 	"time"
 
-	"code.cloudfoundry.org/cflager"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagerflags"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/pivotal-cf-experimental/service-config"
 	"github.com/pkg/errors"
@@ -111,7 +111,7 @@ func NewConfig(osArgs []string) (*Config, error) {
 	serviceConfig := service_config.New()
 	flags := flag.NewFlagSet(binaryName, flag.ExitOnError)
 
-	cflager.AddFlags(flags)
+	lagerflags.AddFlags(flags)
 
 	serviceConfig.AddDefaults(Config{
 		BindAddress: "localhost:8081",
@@ -121,7 +121,7 @@ func NewConfig(osArgs []string) (*Config, error) {
 	_ = flags.Parse(configurationOptions)
 
 	err := serviceConfig.Read(&rootConfig)
-	rootConfig.Logger, _ = cflager.New(binaryName)
+	rootConfig.Logger, _ = lagerflags.New(binaryName)
 	if err != nil {
 		return &rootConfig, err
 	}

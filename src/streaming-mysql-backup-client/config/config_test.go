@@ -9,7 +9,7 @@ import (
 
 	configPkg "github.com/cloudfoundry/streaming-mysql-backup-client/config"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

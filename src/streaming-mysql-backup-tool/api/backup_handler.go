@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 const TrailerKey = "X-Backup-Error"

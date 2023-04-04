@@ -4,19 +4,19 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
 
 	"code.cloudfoundry.org/tlsconfig/certtest"
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/pivotal/mysql-test-utils/dockertest"
+
+	"github.com/cloudfoundry/specs/docker"
 )
 
 type TestCredentials struct {
@@ -36,7 +36,7 @@ type CertificateInfo struct {
 
 var _ = Describe("BackupRestore", func() {
 	var (
-		backupServer           *docker.Container
+		backupServer           string
 		backupServerPort       string
 		backupServerDB         *sql.DB
 		sessionID              string
@@ -56,22 +56,6 @@ var _ = Describe("BackupRestore", func() {
 
 		log.Println("Generating test certificates")
 		createBackupCertificates("backup-server."+sessionID, &credentials)
-
-		_, err := dockerClient.CreateVolume(docker.CreateVolumeOptions{
-			Name: "restore-data." + sessionID,
-		})
-
-		_, err = dockerClient.CreateVolume(docker.CreateVolumeOptions{
-			Name:   "tmp-dir." + sessionID,
-			Driver: "local",
-			DriverOpts: map[string]string{
-				"type":   "tmpfs",
-				"device": "tmpfs",
-				"o":      "size=500m",
-			},
-		})
-
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
@@ -86,11 +70,10 @@ var _ = Describe("BackupRestore", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 
-		backupServerPort = dockertest.HostPort("8081/tcp", backupServer)
+		backupServerPort, err = docker.ContainerPort(backupServer, "8081/tcp")
+		Expect(err).NotTo(HaveOccurred())
 
-		client := &http.Client{
-			Transport: transport,
-		}
+		client := &http.Client{Transport: transport}
 
 		Eventually(func() error {
 			_, err := client.Get("https://127.0.0.1:" + backupServerPort)
@@ -99,7 +82,7 @@ var _ = Describe("BackupRestore", func() {
 
 		log.Println("streaming-mysql-backup-tool is now online")
 
-		backupServerDB, err = dockertest.ContainerDBConnection(backupServer, "3306/tcp")
+		backupServerDB, err = docker.MySQLDB(backupServer, "3306/tcp")
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(backupServerDB.Ping, "1m", "1s").Should(Succeed())
@@ -110,40 +93,28 @@ var _ = Describe("BackupRestore", func() {
 	AfterEach(func() {
 		var errs error
 
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: "backup-server." + sessionID, RemoveVolumes: true, Force: true}); err != nil {
-			if _, ok := err.(*docker.NoSuchContainer); !ok {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveContainer("backup-server." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: "backup-client." + sessionID, RemoveVolumes: true, Force: true}); err != nil {
-			if _, ok := err.(*docker.NoSuchContainer); !ok {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveContainer("backup-client." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: "gpg-unpack." + sessionID, RemoveVolumes: true, Force: true}); err != nil {
-			if _, ok := err.(*docker.NoSuchContainer); !ok {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveContainer("gpg-unpack." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
-		if err := dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: "mysql." + sessionID, RemoveVolumes: true, Force: true}); err != nil {
-			if _, ok := err.(*docker.NoSuchContainer); !ok {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveContainer("mysql." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
-		if err := dockerClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{Name: "restore-data." + sessionID}); err != nil {
-			if err == docker.ErrNoSuchVolume {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveVolume("restore-data." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
-		if err := dockerClient.RemoveVolumeWithOptions(docker.RemoveVolumeOptions{Name: "tmp-dir." + sessionID}); err != nil {
-			if err == docker.ErrNoSuchVolume {
-				errs = multierror.Append(errs, err)
-			}
+		if err := docker.RemoveVolume("tmp-dir." + sessionID); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 
 		Expect(errs).ToNot(HaveOccurred())
@@ -166,8 +137,6 @@ var _ = Describe("BackupRestore", func() {
 	}
 
 	createBackup := func() {
-		var err error
-
 		By("Generating a backup artifact using streaming-mysql-backup-client")
 		log.Println("Creating backup artifact via streaming-mysql-backup-client")
 		clientCfg := backupClientConfig(
@@ -176,20 +145,17 @@ var _ = Describe("BackupRestore", func() {
 			credentials,
 		)
 
-		exitStatus, err := runStreamingMySQLBackupClient(sessionID, clientCfg)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(exitStatus).To(BeZero(), "expected running streaming MySQL Backup Client to exit successfully")
+		Expect(runStreamingMySQLBackupClient(sessionID, clientCfg)).
+			Error().NotTo(HaveOccurred(),
+			"expected running streaming MySQL Backup Client to exit successfully")
 		log.Println("Backup completed successfully")
 	}
 
 	restoreBackups := func() {
 		By("Unpacking the backup artifact into a data directory")
 		log.Println("Unpacking backup artifact")
-		unpackExitStatus, err := unpackBackupArtifact(sessionID)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(unpackExitStatus).To(BeZero())
+		Expect(unpackBackupArtifact(sessionID)).To(Succeed())
 		log.Println("Unpacking backup artifact completed successfully")
-
 	}
 
 	verifyData := func() {
@@ -197,7 +163,7 @@ var _ = Describe("BackupRestore", func() {
 		mysqlContainer, err := startMySQLServer(sessionID)
 		Expect(err).NotTo(HaveOccurred())
 
-		mysqlDB, err := dockertest.ContainerDBConnection(mysqlContainer, "3306/tcp")
+		mysqlDB, err := docker.MySQLDB(mysqlContainer, "3306/tcp")
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(mysqlDB.Ping, "1m", "1s").Should(Succeed())
@@ -239,9 +205,7 @@ var _ = Describe("BackupRestore", func() {
 				"secret",
 				credentials,
 			)
-			exitStatus, err := runStreamingMySQLBackupClientWithFullTmp(sessionID, clientCfg)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(exitStatus).To(BeZero(), "expected running streaming MySQL Backup Client to exit successfully")
+			Expect(runStreamingMySQLBackupClientWithFullTmp(sessionID, clientCfg)).To(Succeed())
 		})
 	})
 
@@ -282,22 +246,13 @@ var _ = Describe("BackupRestore", func() {
 					credentials,
 				)
 
-				exitStatus, err := runStreamingMySQLBackupClient(sessionID, clientCfg)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(exitStatus).ToNot(BeZero(),
+				err := runStreamingMySQLBackupClient(sessionID, clientCfg)
+				Expect(err).To(HaveOccurred(),
 					"expected running streaming MySQL Backup Client to fail, but it did not")
 
-				buf := gbytes.NewBuffer()
-				err = dockerClient.Logs(docker.LogsOptions{
-					Container:    "backup-client." + sessionID,
-					OutputStream: buf,
-					ErrorStream:  buf,
-					Stdout:       true,
-					Stderr:       true,
-				})
+				output, err := docker.Command("logs", "backup-client."+sessionID)
 				Expect(err).NotTo(HaveOccurred())
-
-				Expect(buf).To(gbytes.Say(`Get "?https://backup-server.%s:8081/backup\?format=xbstream"?: remote error: tls: bad certificate`, sessionID))
+				Expect(output).To(ContainSubstring(`Get \"https://backup-server.%s:8081/backup?format=xbstream\": remote error: tls: bad certificate`, sessionID))
 			})
 		})
 	})
@@ -365,8 +320,8 @@ func backupServerConfig(credentials TestCredentials) string {
 		},
 		"BindAddress": ":8081",
 		"TLS": map[string]interface{}{
-			"ServerCert": string(credentials.ServerTLS.Cert),
-			"ServerKey":  string(credentials.ServerTLS.Key),
+			"ServerCert": credentials.ServerTLS.Cert,
+			"ServerKey":  credentials.ServerTLS.Key,
 		},
 	}
 
@@ -442,159 +397,123 @@ func backupClientConfig(backupServerHost, encryptionPassword string, credentials
 	return string(jsonBytes)
 }
 
-func runStreamingMySQLBackupClientWithFullTmp(sessionID, config string) (exitStatus int, err error) {
-	container, err := dockertest.RunContainer(
-		dockerClient,
-		"backup-client."+sessionID,
-		dockertest.WithImage(DockerImage),
-		dockertest.WithNetwork(dockerNetwork),
-		dockertest.WithUser("root"),
-		dockertest.AddEnvVars(
-			"MYSQL_ALLOW_EMPTY_PASSWORD=1",
-			"CONFIG="+config,
-		),
-		dockertest.AddBinds(
-			streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client:delegated",
-			"restore-data."+sessionID+":/backups",
-			"tmp-dir."+sessionID+":/tmp",
-		),
-		dockertest.WithCmd("--user=root"),
-	)
-
-	if err != nil {
-		return -1, err
+func runStreamingMySQLBackupClientWithFullTmp(sessionID, config string) error {
+	if _, err := docker.Command(
+		"run",
+		"--name=backup-client."+sessionID,
+		"--network="+dockerNetwork,
+		"--user=root",
+		"--env=MYSQL_ALLOW_EMPTY_PASSWORD=1",
+		"--env=CONFIG="+config,
+		"--publish=3306",
+		"--publish=8081",
+		"--mount=type=tmpfs,destination=/tmp,tmpfs-mode=1777",
+		"--volume="+streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client",
+		"--volume=restore-data."+sessionID+":/backups",
+		"--detach",
+		DockerImage,
+		"--user=root",
+	); err != nil {
+		return fmt.Errorf("failed to start streaming-mysql-backup-tool: %w", err)
 	}
 
-	fillUpTmp(container)
+	// This fails, because /tmp will be full
+	_, _ = fillUpTmp("backup-client." + sessionID)
 
-	exec, err := dockerClient.CreateExec(docker.CreateExecOptions{
-		Container: container.ID,
-		Cmd: []string{
-			"streaming-mysql-backup-client",
-			"--config=" + config,
-		},
-		AttachStdout: true,
-		AttachStderr: true,
-	})
-
-	if err != nil {
-		return -1, err
+	if _, err := docker.Command("exec", "--env=CONFIG="+config, "-i", "backup-client."+sessionID, "streaming-mysql-backup-client"); err != nil {
+		return fmt.Errorf("failed to run streaming-mysql-backup-client: %w", err)
 	}
 
-	result, err := dockertest.RunExec(dockerClient, exec)
-	if err != nil {
-		return -1, err
-	}
-	return result.ExitCode, nil
+	return nil
 }
 
-func runStreamingMySQLBackupClient(sessionID, config string) (exitStatus int, err error) {
-	container, err := dockertest.RunContainer(
-		dockerClient,
-		"backup-client."+sessionID,
-		dockertest.WithImage(DockerImage),
-		dockertest.WithNetwork(dockerNetwork),
-		dockertest.WithUser("root"),
-		dockertest.AddEnvVars(
-			"CONFIG="+config,
-		),
-		dockertest.AddBinds(
-			streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client:delegated",
-			"restore-data."+sessionID+":/backups",
-		),
-		dockertest.WithEntrypoint("streaming-mysql-backup-client"),
-		dockertest.WithCmd("--config="+config),
+func runStreamingMySQLBackupClient(sessionID, config string) error {
+	_, err := docker.Command(
+		"run",
+		"--name=backup-client."+sessionID,
+		"--network="+dockerNetwork,
+		"--user=root",
+		"--env=MYSQL_ALLOW_EMPTY_PASSWORD=1",
+		"--env=CONFIG="+config,
+		"--publish=3306",
+		"--publish=8081",
+		"--volume="+streamingMySQLBackupClientBinPath+":/usr/local/bin/streaming-mysql-backup-client",
+		"--volume=restore-data."+sessionID+":/backups",
+		"--entrypoint=streaming-mysql-backup-client",
+		DockerImage,
 	)
 
-	if err != nil {
-		return -1, err
-	}
-
-	return dockerClient.WaitContainer(container.ID)
+	return err
 }
 
-func unpackBackupArtifact(sessionID string) (exitStatus int, err error) {
-	container, err := dockertest.RunContainer(
-		dockerClient,
-		"gpg-unpack."+sessionID,
-		dockertest.WithImage(DockerImage),
-		dockertest.WithNetwork(dockerNetwork),
-		dockertest.WithUser("root"),
-		dockertest.AddEnvVars(
-			"GPG_PASSPHRASE=secret",
-			"ARTIFACTS_PATH=/restore/",
-			"DATA_DIRECTORY=/restore/",
-		),
-		dockertest.AddBinds(
-			"restore-data."+sessionID+":/restore",
-			filepath.Join(fixturesPath, "restore-artifact.sh")+":/usr/local/bin/restore-artifact",
-		),
-		dockertest.WithEntrypoint("restore-artifact"),
+func unpackBackupArtifact(sessionID string) error {
+	_, err := docker.Command(
+		"run",
+		"--name=gpg-unpack."+sessionID,
+		"--network="+dockerNetwork,
+		"--user=root",
+		"--env=GPG_PASSPHRASE=secret",
+		"--env=ARTIFACTS_PATH=/restore/",
+		"--env=DATA_DIRECTORY=/restore/",
+		"--publish=3306",
+		"--publish=8081",
+		"--volume=restore-data."+sessionID+":/restore",
+		"--volume="+filepath.Join(fixturesPath, "restore-artifact.sh")+":/usr/local/bin/restore-artifact",
+		"--entrypoint=restore-artifact",
+		DockerImage,
+		"--user=root",
 	)
 
-	if err != nil {
-		return -1, err
-	}
-
-	return dockerClient.WaitContainer(container.ID)
+	return err
 }
 
-func startStreamingMySQLBackupTool(containerName, config string) (*docker.Container, error) {
-	return dockertest.RunContainer(
-		dockerClient,
-		containerName,
-		dockertest.WithImage(DockerImage),
-		dockertest.WithNetwork(dockerNetwork),
-		dockertest.WithUser("root"),
-		dockertest.AddEnvVars(
-			"MYSQL_ALLOW_EMPTY_PASSWORD=1",
-			"CONFIG="+config,
-		),
-		dockertest.AddExposedPorts("3306/tcp", "8081/tcp"),
-		dockertest.AddBinds(
-			streamingMySQLBackupToolBinPath+":/usr/local/bin/streaming-mysql-backup-tool",
-			filepath.Join(fixturesPath, "start-backup-server.sh")+":/docker-entrypoint-initdb.d/start-backup-server.sh",
-		),
-		dockertest.WithCmd("--user=root"),
+func startStreamingMySQLBackupTool(containerName, config string) (string, error) {
+	return docker.Command(
+		"run",
+		"--name="+containerName,
+		"--network="+dockerNetwork,
+		"--user=root",
+		"--env=MYSQL_ALLOW_EMPTY_PASSWORD=1",
+		"--env=CONFIG="+config,
+		"--publish=3306",
+		"--publish=8081",
+		"--volume="+streamingMySQLBackupToolBinPath+":/usr/local/bin/streaming-mysql-backup-tool",
+		"--volume="+filepath.Join(fixturesPath, "start-backup-server.sh")+":/docker-entrypoint-initdb.d/start-backup-server.sh",
+		"--detach",
+		DockerImage,
+		"--user=root",
 	)
 }
 
-func startMySQLServer(sessionID string) (*docker.Container, error) {
-	return dockertest.RunContainer(
-		dockerClient,
-		"mysql."+sessionID,
-		dockertest.WithImage(DockerImage),
-		dockertest.WithNetwork(dockerNetwork),
-		dockertest.WithUser("root"),
-		dockertest.AddEnvVars(
-			"MYSQL_ALLOW_EMPTY_PASSWORD=1",
-		),
-		dockertest.AddExposedPorts("3306/tcp"),
-		dockertest.AddBinds(
-			"restore-data."+sessionID+":/var/lib/mysql",
-		),
-		dockertest.WithCmd("--user=root"),
+func startMySQLServer(sessionID string) (string, error) {
+	return docker.Command(
+		"run",
+		"--name=mysql."+sessionID,
+		"--network="+dockerNetwork,
+		"--user=root",
+		"--env=MYSQL_ALLOW_EMPTY_PASSWORD=1",
+		"--publish=3306",
+		"--volume=restore-data."+sessionID+":/var/lib/mysql",
+		"--detach",
+		DockerImage,
+		"--user=root",
 	)
 }
 
-func runCmdInDocker(container *docker.Container, cmd []string) (*dockertest.ExecResult, error) {
-	exec, err := dockerClient.CreateExec(docker.CreateExecOptions{
-		Container:    container.ID,
-		Cmd:          cmd,
-		AttachStdout: true,
-		AttachStderr: true,
-	})
-	if err != nil {
-		return nil, err
-	}
+func runCmdInDocker(container string, cmd []string) (string, error) {
+	args := append([]string{
+		"exec",
+		"-it",
+		container,
+	}, cmd...)
 
-	return dockertest.RunExec(dockerClient, exec)
+	return docker.Command(args...)
 }
 
 // In order to simulate a full tmp directory which result from failed partial backups,
 // we fill up the tmp directory.
 
-func fillUpTmp(container *docker.Container) (*dockertest.ExecResult, error) {
+func fillUpTmp(container string) (string, error) {
 	mkdirCmd := []string{
 		"mkdir",
 		"-p",
@@ -602,7 +521,7 @@ func fillUpTmp(container *docker.Container) (*dockertest.ExecResult, error) {
 	}
 	_, err := runCmdInDocker(container, mkdirCmd)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	ddCmd := []string{

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagerflags"
 	"code.cloudfoundry.org/tlsconfig"
 	service_config "github.com/pivotal-cf-experimental/service-config"
 	"github.com/pkg/errors"

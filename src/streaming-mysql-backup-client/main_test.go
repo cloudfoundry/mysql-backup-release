@@ -3,7 +3,7 @@ package main_test
 import (
 	"os/exec"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 )
@@ -29,7 +29,7 @@ var _ = Describe("Main", func() {
 				"-logLevel",
 			}
 
-			Eventually(session).Should(gexec.Exit())
+			Eventually(session, "10s").Should(gexec.Exit())
 
 			contents := session.Err.Contents()
 			for _, flag := range expectedFlags {

@@ -21,11 +21,11 @@ import (
 	"github.com/cloudfoundry/streaming-mysql-backup-client/config"
 	"github.com/cloudfoundry/streaming-mysql-backup-client/download"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 )
 
 type bufferWriter struct {

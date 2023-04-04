@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	. "github.com/cloudfoundry/streaming-mysql-backup-client/galera_agent_caller"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

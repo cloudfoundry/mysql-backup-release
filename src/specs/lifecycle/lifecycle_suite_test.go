@@ -7,10 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/pivotal/mysql-test-utils/testhelpers"
 )
 
 func TestLifecycle(t *testing.T) {
@@ -42,9 +40,3 @@ func checkForRequiredEnvVars(envs []string) {
 
 	Expect(missingEnvs).To(BeEmpty(), "Missing environment variables: %s", strings.Join(missingEnvs, ", "))
 }
-
-var _ = JustAfterEach(func() {
-	if CurrentGinkgoTestDescription().Failed {
-		fmt.Fprint(GinkgoWriter, testhelpers.TestFailureMessage)
-	}
-})

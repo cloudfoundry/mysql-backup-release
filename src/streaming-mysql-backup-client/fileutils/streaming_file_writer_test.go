@@ -3,7 +3,7 @@ package fileutils_test
 import (
 	"github.com/cloudfoundry/streaming-mysql-backup-client/fileutils"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"errors"
