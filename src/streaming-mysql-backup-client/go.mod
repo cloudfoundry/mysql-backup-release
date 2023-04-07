@@ -15,5 +15,5 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/square/certstrap v1.1.2-0.20190303202523-350df15b3713 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
-	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
+	golang.org/x/net v0.7.0 // indirect
 )
