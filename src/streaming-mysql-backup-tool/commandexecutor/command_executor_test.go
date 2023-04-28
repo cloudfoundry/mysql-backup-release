@@ -93,13 +93,12 @@ var _ = Describe("CommandExecutor", func() {
 			Expect(err).To(MatchError("fake-error"))
 		})
 
-		It("kills the command", func(done Done) {
+		It("kills the command", func() {
 			cmd = exec.Command("yes") //yes prints 'y' forever
 			executor := NewCommandExecutor(cmd, fakeWriter, fakeWriter, logger)
 
 			Expect(executor.Run()).To(MatchError("fake-error"))
-			close(done)
-		}, 5)
+		})
 	})
 
 	Context("when the command has nonzero exit code", func() {
@@ -136,7 +135,7 @@ var _ = Describe("CommandExecutor", func() {
 			gexec.CleanupBuildArtifacts()
 		})
 
-		It("still terminates the command eventually", func(done Done) {
+		It("still terminates the command eventually", func() {
 			fakeWriter.WriteReturns(-1, errors.New("fake-error"))
 			executor := NewCommandExecutor(badCmd, fakeWriter, &stderrWriter, logger)
 			defer func() {
@@ -146,7 +145,6 @@ var _ = Describe("CommandExecutor", func() {
 			}()
 
 			Expect(executor.Run()).ToNot(Succeed())
-			close(done)
-		}, 10.0)
+		})
 	})
 })
