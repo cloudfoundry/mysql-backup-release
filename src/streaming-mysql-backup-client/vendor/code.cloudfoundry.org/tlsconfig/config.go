@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 )
 
 // Config represents a half configured TLS configuration. It can be made usable
@@ -77,6 +76,29 @@ func (c Config) Client(opts ...ClientOption) (*tls.Config, error) {
 	return config, nil
 }
 
+// WithExternalServiceDefaults modifies a *tls.Config that is suitable for use
+// in communication between clients and servers where we do not control one end
+// of the connection. It is less strict than the WithInternalServiceDefaults
+// helper.
+//
+// The standards here are taken from the Mozilla SSL configuration generator
+// set to "Intermediate" on Dec 19, 2019.
+func WithExternalServiceDefaults() TLSOption {
+	return func(c *tls.Config) error {
+		c.MinVersion = tls.VersionTLS12
+		c.MaxVersion = tls.VersionTLS13
+		c.CipherSuites = []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		}
+		return nil
+	}
+}
+
 // WithInternalServiceDefaults modifies a *tls.Config that is suitable for use
 // in communication links between internal services. It is not guaranteed to be
 // suitable for communication to other external services as it contains a
@@ -92,7 +114,7 @@ func (c Config) Client(opts ...ClientOption) (*tls.Config, error) {
 func WithInternalServiceDefaults() TLSOption {
 	return func(c *tls.Config) error {
 		c.MinVersion = tls.VersionTLS12
-		c.PreferServerCipherSuites = true
+		c.MaxVersion = tls.VersionTLS13
 		c.CipherSuites = []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -105,7 +127,19 @@ func WithInternalServiceDefaults() TLSOption {
 // presented to its peer upon connection.
 func WithIdentity(cert tls.Certificate) TLSOption {
 	return func(c *tls.Config) error {
+		fail := func(err error) error {
+			return fmt.Errorf("failed to load keypair: %s", err.Error())
+		}
+		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			return fail(err)
+		}
+		err = checkExpiration(x509Cert)
+		if err != nil {
+			return fail(err)
+		}
 		c.Certificates = []tls.Certificate{cert}
+		c.BuildNameToCertificate() //nolint:staticcheck
 		return nil
 	}
 }
@@ -118,8 +152,7 @@ func WithIdentityFromFile(certPath string, keyPath string) TLSOption {
 		if err != nil {
 			return fmt.Errorf("failed to load keypair: %s", err.Error())
 		}
-		c.Certificates = []tls.Certificate{cert}
-		return nil
+		return WithIdentity(cert)(c)
 	}
 }
 
@@ -133,23 +166,41 @@ func WithClientAuthentication(authority *x509.CertPool) ServerOption {
 	}
 }
 
+// WithClientAuthenticationBuilder uses the passed PoolBuilder to create the certificate
+// pool to use as the authority when verifying client certificates.
+func WithClientAuthenticationBuilder(builder PoolBuilder) ServerOption {
+	return func(c *tls.Config) error {
+		pool, err := builder.Build()
+		if err != nil {
+			return err
+		}
+
+		return WithClientAuthentication(pool)(c)
+	}
+}
+
 // WithClientAuthenticationFromFile makes the server verify that all clients present an
 // identity that can be validated by the CA file provided.
 func WithClientAuthenticationFromFile(caPath string) ServerOption {
 	return func(c *tls.Config) error {
-		caBytes, err := ioutil.ReadFile(caPath)
+		return WithClientAuthenticationBuilder(
+			FromEmptyPool(
+				WithCertsFromFile(caPath),
+			),
+		)(c)
+	}
+}
+
+// WithAuthorityBuilder uses the passed PoolBuilder to create the certificate
+// pool to use as the authority.
+func WithAuthorityBuilder(builder PoolBuilder) ClientOption {
+	return func(c *tls.Config) error {
+		pool, err := builder.Build()
 		if err != nil {
-			return fmt.Errorf("failed to read file %s: %s", caPath, err.Error())
+			return err
 		}
 
-		caCertPool := x509.NewCertPool()
-		if ok := caCertPool.AppendCertsFromPEM(caBytes); !ok {
-			return fmt.Errorf("unable to load CA certificate at %s", caPath)
-		}
-
-		c.ClientAuth = tls.RequireAndVerifyClientCert
-		c.ClientCAs = caCertPool
-		return nil
+		return WithAuthority(pool)(c)
 	}
 }
 
@@ -166,18 +217,11 @@ func WithAuthority(authority *x509.CertPool) ClientOption {
 // that can be validated by the CA file provided.
 func WithAuthorityFromFile(caPath string) ClientOption {
 	return func(c *tls.Config) error {
-		caBytes, err := ioutil.ReadFile(caPath)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %s", caPath, err.Error())
-		}
-
-		caCertPool := x509.NewCertPool()
-		if ok := caCertPool.AppendCertsFromPEM(caBytes); !ok {
-			return fmt.Errorf("unable to load CA certificate at %s", caPath)
-		}
-
-		c.RootCAs = caCertPool
-		return nil
+		return WithAuthorityBuilder(
+			FromEmptyPool(
+				WithCertsFromFile(caPath),
+			),
+		)(c)
 	}
 }
 

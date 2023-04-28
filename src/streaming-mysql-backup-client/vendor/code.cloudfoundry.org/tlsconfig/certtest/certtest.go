@@ -44,7 +44,7 @@ func BuildCA(name string) (*Authority, error) {
 	// XXX: Add a month so CA expires after its certificates.
 	expiry := time.Now().AddDate(1, 1, 0)
 
-	crt, err := pkix.CreateCertificateAuthority(key, ou, expiry, o, country, province, city, name)
+	crt, err := pkix.CreateCertificateAuthority(key, ou, expiry, o, country, province, city, name, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +73,18 @@ func WithDomains(domains ...string) SignOption {
 	}
 }
 
-// BuildSignedCertificate creates a new signed certificate which is valid for
-// `localhost` and `127.0.0.1` by default. This can be changed by passing in
-// the various options. The certificates it creates should only be used
-// ephemerally in tests.
+// WithExpiry alters the expiry time of the requested certificate. It must be
+// earlier than the expiry time of the associated CA.
+func WithExpiry(expiry time.Time) SignOption {
+	return func(options *signOptions) {
+		options.expiry = expiry
+	}
+}
+
+// BuildSignedCertificateWithExpiry creates a new signed certificate which is
+// valid for `localhost` and `127.0.0.1` by default with the expiry a year from
+// now. This can be changed by passing in the various options. The certificates
+// it creates should only be used ephemerally in tests.
 func (a *Authority) BuildSignedCertificate(name string, options ...SignOption) (*Certificate, error) {
 	key, err := pkix.CreateRSAKey(keySize)
 	if err != nil {
@@ -93,9 +101,7 @@ func (a *Authority) BuildSignedCertificate(name string, options ...SignOption) (
 		return nil, err
 	}
 
-	expiry := time.Now().AddDate(1, 0, 0)
-
-	crt, err := pkix.CreateCertificateHost(a.cert, a.key, csr, expiry)
+	crt, err := pkix.CreateCertificateHost(a.cert, a.key, csr, opts.expiry)
 	if err != nil {
 		return nil, err
 	}
@@ -106,9 +112,25 @@ func (a *Authority) BuildSignedCertificate(name string, options ...SignOption) (
 	}, nil
 }
 
+// BuildSignedCertificateWithExpiry creates a new signed certificate which is valid for
+// `localhost` and `127.0.0.1` by default. This can be changed by passing in
+// the various options. The certificates it creates should only be used
+// ephemerally in tests.
+//
+// Deprecated: Use BuildSignedCertificate with the WithExpiry(...) option.
+func (a *Authority) BuildSignedCertificateWithExpiry(name string, expiry time.Time, options ...SignOption) (*Certificate, error) {
+	options = append(options, WithExpiry(expiry))
+	return a.BuildSignedCertificate(name, options...)
+}
+
 // CertificatePEM returns the authorities certificate as a PEM encoded bytes.
 func (a *Authority) CertificatePEM() ([]byte, error) {
 	return a.cert.Export()
+}
+
+// Certificate resunts the authority's certificate.
+func (a *Authority) Certificate() (*x509.Certificate, error) {
+	return a.cert.GetRawCertificate()
 }
 
 // CertPool returns a certificate pool which is pre-populated with the
@@ -166,12 +188,15 @@ func (c *Certificate) CertificatePEMAndPrivateKey() ([]byte, []byte, error) {
 type signOptions struct {
 	domains []string
 	ips     []net.IP
+
+	expiry time.Time
 }
 
 func defaultSignOptions() *signOptions {
 	return &signOptions{
 		domains: []string{"localhost"},
 		ips:     []net.IP{net.ParseIP("127.0.0.1")},
+		expiry:  time.Now().AddDate(1, 0, 0),
 	}
 }
 

@@ -40,20 +40,6 @@ const (
 	oldCsrPEMBlockType = "NEW CERTIFICATE REQUEST"
 )
 
-var (
-	csrPkixName = pkix.Name{
-		Country:            []string{},
-		Organization:       []string{},
-		OrganizationalUnit: nil,
-		Locality:           nil,
-		Province:           nil,
-		StreetAddress:      nil,
-		PostalCode:         nil,
-		SerialNumber:       "",
-		CommonName:         "",
-	}
-)
-
 // ParseAndValidateIPs parses a comma-delimited list of IP addresses into an array of IP addresses
 func ParseAndValidateIPs(ipList string) (res []net.IP, err error) {
 	// IP list can potentially be a blank string, ""
@@ -93,8 +79,7 @@ func ParseAndValidateURIs(uriList string) (res []*url.URL, err error) {
 
 // CreateCertificateSigningRequest sets up a request to create a csr file with the given parameters
 func CreateCertificateSigningRequest(key *Key, organizationalUnit string, ipList []net.IP, domainList []string, uriList []*url.URL, organization string, country string, province string, locality string, commonName string) (*CertificateSigningRequest, error) {
-
-	csrPkixName.CommonName = commonName
+	csrPkixName := pkix.Name{CommonName: commonName}
 
 	if len(organizationalUnit) > 0 {
 		csrPkixName.OrganizationalUnit = []string{organizationalUnit}
@@ -202,6 +187,8 @@ func checkSignature(csr *x509.CertificateRequest, algo x509.SignatureAlgorithm, 
 		return x509.ErrUnsupportedAlgorithm
 	}
 	h := hashType.New()
+
+	// nolint:errcheck
 	h.Write(signed)
 	digest := h.Sum(nil)
 	switch pub := csr.PublicKey.(type) {
