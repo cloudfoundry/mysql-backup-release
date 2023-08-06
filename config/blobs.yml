@@ -10,7 +10,7 @@ percona-xtrabackup-2.4.28-Linux-x86_64.glibc2.17-minimal.tar.gz:
   size: 13658493
   object_id: 7b12c2a1-7476-4196-6786-a21de279b9f3
   sha: sha256:2396219447d6fcb6aa82746bb853ca214e492f7adb6b1ddf18c75a5f632b4d22
-percona-xtrabackup-8.0.32-26-Linux-x86_64.glibc2.17-minimal.tar.gz:
-  size: 34456397
-  object_id: 3846d62f-91cb-4643-69e7-0f67fc51833f
-  sha: sha256:8068c61c9382687060a7e549105bc75832b84a2ecf41f5643266aa6aa52684e8
+percona-xtrabackup-8.0.33-28-Linux-x86_64.glibc2.17-minimal.tar.gz:
+  size: 33227037
+  object_id: 71fa846f-6218-4149-6e72-0e42e856021f
+  sha: sha256:850ca178196092bf098a118ced85d2059064b7d69fc05c417b3af5f3f27bbccf
