@@ -1,0 +1,51 @@
+name: mysql-backup
+version: 2.29.0
+commit_hash: 0610cbc
+uncommitted_changes: false
+jobs:
+- name: streaming-mysql-backup-client
+  version: e982183ed2d152c879ac9ff81ac404a00fc5e97003b68a0bca4a6b96ff7b1cc1
+  fingerprint: e982183ed2d152c879ac9ff81ac404a00fc5e97003b68a0bca4a6b96ff7b1cc1
+  sha1: sha256:018babd5f0cf9b6effd8e3777243db6b132470ff109016e90ab47642541671e4
+  packages:
+  - xtrabackup
+  - xtrabackup-8.0
+  - streaming-mysql-backup-client
+- name: streaming-mysql-backup-tool
+  version: 1b071f56a2f29927b252d6be52bae53af7409129a584e30ba23480b8b34763ea
+  fingerprint: 1b071f56a2f29927b252d6be52bae53af7409129a584e30ba23480b8b34763ea
+  sha1: sha256:f3efc8b10fb55284f0fb5124aba5da957c63f8851244a2d983058e8af6754dc8
+  packages:
+  - streaming-mysql-backup-tool
+packages:
+- name: golang-1-linux
+  version: 29f2024e7d815be0694944c3c3c9512914a36a31d5fa1b2cbd2452c8d331ce90
+  fingerprint: 29f2024e7d815be0694944c3c3c9512914a36a31d5fa1b2cbd2452c8d331ce90
+  sha1: sha256:74e09558cd565077109cf445c90c3a1f8df661e8bbfdf04cc6f6693714f99304
+  dependencies: []
+- name: streaming-mysql-backup-client
+  version: 92c0a11df51c3fa629e299dd1be84e5448f252b7bd0e6cd649ae4c81b7aa4da4
+  fingerprint: 92c0a11df51c3fa629e299dd1be84e5448f252b7bd0e6cd649ae4c81b7aa4da4
+  sha1: sha256:a83ce54f375c93e766519d7538ab5fc7656cd9cb85278d5b8c5ab4f830ceb8b1
+  dependencies:
+  - golang-1-linux
+- name: streaming-mysql-backup-tool
+  version: 16e3b20761b0ca056cd6d2ed583b027952fc2070302d6473e81959dcc1c896e1
+  fingerprint: 16e3b20761b0ca056cd6d2ed583b027952fc2070302d6473e81959dcc1c896e1
+  sha1: sha256:9097cf899d3130ffab08f795b36dbb74342fed01e7f8cfd588df689c76f6cfdb
+  dependencies:
+  - golang-1-linux
+- name: xtrabackup
+  version: c63f7aac0823f7ddcf1e060bec1d5536db0500d264b6131c7ddbd0592ae9e241
+  fingerprint: c63f7aac0823f7ddcf1e060bec1d5536db0500d264b6131c7ddbd0592ae9e241
+  sha1: sha256:b8cc08a9f90e5d6e37c4c3e80a5d2e4692c9cb60005efa591cb4da801dc6f34e
+  dependencies: []
+- name: xtrabackup-8.0
+  version: 021b90f1970aa2819ad68dc89fe8ea63245228f755d522e0270a1c29982b70f3
+  fingerprint: 021b90f1970aa2819ad68dc89fe8ea63245228f755d522e0270a1c29982b70f3
+  sha1: sha256:50719aeb80710e6921bf4dc2c7fc0f6e459b663c1992caae67121adcced7284e
+  dependencies: []
+license:
+  version: d4a04aab6cbc19010a3a347f3bcd9fe206b1c23baddfd6dff7475d88338c008a
+  fingerprint: d4a04aab6cbc19010a3a347f3bcd9fe206b1c23baddfd6dff7475d88338c008a
+  sha1: sha256:cf3fec64c377ffb44366e123d200dc4758cc8db44472004b2b24c0f3caec49e1
