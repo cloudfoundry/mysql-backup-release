@@ -252,7 +252,7 @@ var _ = Describe("BackupRestore", func() {
 
 				output, err := docker.Command("logs", "backup-client."+sessionID)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(output).To(ContainSubstring(`Get \"https://backup-server.%s:8081/backup?format=xbstream\": remote error: tls: bad certificate`, sessionID))
+				Expect(output).To(ContainSubstring(`Get \"https://backup-server.%s:8081/backup?format=xbstream\": remote error: tls: unknown certificate authority`, sessionID))
 			})
 		})
 	})

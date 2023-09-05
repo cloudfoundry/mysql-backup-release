@@ -399,11 +399,11 @@ var _ = Describe("streaming-mysql-backup-tool", func() {
 					}, "20s").Should(Succeed())
 				})
 
-				It("Throws a bad certificate error", func() {
+				It("returns a error describing the condition", func() {
 					Eventually(func() error {
 						_, err := httpClient.Get(backupUrl)
 						return err
-					}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+					}).Should(MatchError(ContainSubstring("tls: certificate required")))
 				})
 			})
 
@@ -435,11 +435,11 @@ var _ = Describe("streaming-mysql-backup-tool", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				It("Throws a bad certificate error", func() {
+				It("returns an error describing the condition", func() {
 					Eventually(func() error {
 						_, err := httpClient.Get(backupUrl)
 						return err
-					}).Should(MatchError(ContainSubstring("tls: bad certificate")))
+					}).Should(MatchError(ContainSubstring("tls: certificate required")))
 				})
 			})
 
@@ -484,7 +484,7 @@ var _ = Describe("streaming-mysql-backup-tool", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				It("Throws a bad certificate error", func() {
+				It("returns a certificate error", func() {
 					Eventually(func() error {
 						_, err := httpClient.Get(backupUrl)
 						return err
