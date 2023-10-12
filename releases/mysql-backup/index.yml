@@ -119,6 +119,8 @@ builds:
     version: 2.20.0
   db242b9a-a59e-4d85-8727-0273b781d66b:
     version: 1.27.0
+  db2cdddd-f0e6-456c-47c1-88b7da2741ec:
+    version: 2.32.0
   dcbed104-2607-4dd8-bed8-c213e19db7d4:
     version: 1.18.0
   dd8825d6-9a0a-4cf8-bb50-7c58eb368d87:
