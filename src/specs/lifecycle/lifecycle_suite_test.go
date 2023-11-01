@@ -1,7 +1,6 @@
 package lifecycle_test
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
