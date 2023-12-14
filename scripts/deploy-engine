@@ -32,6 +32,7 @@ pxc-v1-80)
     --ops-file=operations/pxc/enable-remote-admin-access.yml
     --ops-file=operations/pxc/galera-agent-tls.yml
     --ops-file=operations/use-mtls.yml
+    --ops-file=operations/pxc/enable-read-only.yml
   )
   ;;
 pxc-v1-57)
