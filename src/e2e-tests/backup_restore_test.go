@@ -24,13 +24,17 @@ var _ = Describe("Streaming MySQL Backup Tool", Ordered, Label("backup-restore")
 
 	BeforeAll(func() {
 		deploymentName = "mysql-backup-release-backup-restore-test" + uuid.New().String()
+		var opsFileArgument []string
+		if opsFile := os.Getenv("PXC_OPS_FILE_TO_APPLY"); opsFile != "" {
+			opsFileArgument = append(opsFileArgument, "--ops-file="+filepath.Join("operations", opsFile))
+		}
 
 		Expect(cmd.RunCustom(
 			cmd.Setup(
 				cmd.WithCwd("../.."),
 				cmd.WithEnv("DEPLOYMENT_NAME="+deploymentName),
 			),
-			"./scripts/deploy-engine",
+			"./scripts/deploy-engine", opsFileArgument...
 		)).To(Succeed())
 
 		instances, err := bosh.Instances(deploymentName, bosh.MatchByInstanceGroup("mysql"))
