@@ -6,11 +6,11 @@ libev-4.33.tar.gz:
   size: 569527
   object_id: 49f23753-9f6e-44eb-5dc8-da49562a78f8
   sha: sha256:507eb7b8d1015fbec5b935f34ebed15bf346bed04a11ab82b8eee848c4205aea
-percona-xtrabackup-2.4.28-Linux-x86_64.glibc2.17-minimal.tar.gz:
-  size: 13658493
-  object_id: 7b12c2a1-7476-4196-6786-a21de279b9f3
-  sha: sha256:2396219447d6fcb6aa82746bb853ca214e492f7adb6b1ddf18c75a5f632b4d22
-percona-xtrabackup-8.0.34-29-Linux-x86_64.glibc2.17-minimal.tar.gz:
-  size: 33465805
-  object_id: 7d1f0201-92dd-45de-7254-e9758df3fd2b
-  sha: sha256:59d8bd9c14bd008e4d00abe37a0e90e1a2eb84de8441832d2ca3b12be59f998c
+percona-xtrabackup-2.4.29-Linux-x86_64.glibc2.17-minimal.tar.gz:
+  size: 13834058
+  object_id: f8580dff-afd9-48d4-6ad7-6ad8a099edb0
+  sha: sha256:372d051a8bdb92fed021b93e34662b19d7b29e8bafe5d50b4b8c1c03b1e59b7b
+percona-xtrabackup-8.0.35-30-Linux-x86_64.glibc2.17-minimal.tar.gz:
+  size: 33435012
+  object_id: 23b21035-648a-4bcb-77d3-f4c318856110
+  sha: sha256:12c868398a3ed8e71d2e980d8064191913bbaf6057f1634222b8093792f13123
