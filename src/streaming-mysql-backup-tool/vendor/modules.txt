@@ -5,10 +5,13 @@ code.cloudfoundry.org/lager/v3/internal/truncate
 code.cloudfoundry.org/lager/v3/lagerctx
 code.cloudfoundry.org/lager/v3/lagerflags
 code.cloudfoundry.org/lager/v3/lagertest
-# code.cloudfoundry.org/tlsconfig v0.0.0-20231017135636-f0e44068c22f
+# code.cloudfoundry.org/tlsconfig v0.0.0-20240116140718-a2c58c2ff70c
 ## explicit; go 1.19
 code.cloudfoundry.org/tlsconfig
 code.cloudfoundry.org/tlsconfig/certtest
+# dario.cat/mergo v1.0.0
+## explicit; go 1.13
+dario.cat/mergo
 # filippo.io/edwards25519 v1.1.0
 ## explicit; go 1.20
 filippo.io/edwards25519
@@ -33,7 +36,7 @@ github.com/cenkalti/backoff/v4
 # github.com/containerd/continuity v0.4.3
 ## explicit; go 1.19
 github.com/containerd/continuity/pathdriver
-# github.com/docker/cli v24.0.7+incompatible
+# github.com/docker/cli v25.0.0+incompatible
 ## explicit
 github.com/docker/cli/cli/compose/interpolation
 github.com/docker/cli/cli/compose/loader
@@ -41,7 +44,7 @@ github.com/docker/cli/cli/compose/schema
 github.com/docker/cli/cli/compose/template
 github.com/docker/cli/cli/compose/types
 github.com/docker/cli/opts
-# github.com/docker/docker v24.0.7+incompatible
+# github.com/docker/docker v25.0.0+incompatible
 ## explicit
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/container
@@ -52,6 +55,8 @@ github.com/docker/docker/api/types/strslice
 github.com/docker/docker/api/types/swarm
 github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/docker/api/types/versions
+github.com/docker/docker/image/spec/specs-go/v1
+github.com/docker/docker/internal/multierror
 # github.com/docker/go-connections v0.5.0
 ## explicit; go 1.18
 github.com/docker/go-connections/nat
@@ -80,7 +85,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20231229205709-960ae82b1e42
+# github.com/google/pprof v0.0.0-20240117000934-35fc243c5815
 ## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -103,8 +108,8 @@ github.com/moby/term/windows
 ## explicit; go 1.12
 # github.com/onsi/ginkgo v1.16.5
 ## explicit; go 1.16
-# github.com/onsi/ginkgo/v2 v2.14.0
-## explicit; go 1.18
+# github.com/onsi/ginkgo/v2 v2.15.0
+## explicit; go 1.20
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
@@ -125,8 +130,8 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.30.0
-## explicit; go 1.18
+# github.com/onsi/gomega v1.31.1
+## explicit; go 1.20
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/gbytes
@@ -199,7 +204,7 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v1.2.0
 ## explicit
 github.com/xeipuuv/gojsonschema
-# go.step.sm/crypto v0.41.0
+# go.step.sm/crypto v0.42.0
 ## explicit; go 1.20
 go.step.sm/crypto/fingerprint
 go.step.sm/crypto/internal/bcrypt_pbkdf
